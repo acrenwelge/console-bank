@@ -1,7 +1,14 @@
 # Created by https://www.gitignore.io/api/java,maven,windows,eclipse,sonarqube,code-java
 # Edit at https://www.gitignore.io/?templates=java,maven,windows,eclipse,sonarqube,code-java
 
+# manual edits
 .credentials
+Accounts/
+Customers/
+Admins/
+maxaccountid.txt
+maxadminid.txt
+maxuserid.txt
 
 ### Code-Java ###
 # Language Support for Java(TM) by Red Hat extension for Visual Studio Code - https://marketplace.visualstudio.com/items?itemName=redhat.java
