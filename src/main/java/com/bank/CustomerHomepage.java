@@ -1,25 +1,27 @@
 package com.bank;
 
-import static com.bank.serialize.AccountReaderWriter.getAccountById;
-import static com.bank.serialize.CustomerReaderWriter.saveCustomer;
-
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.Currency;
 import java.util.InputMismatchException;
 import java.util.Scanner;
 import java.util.Set;
 
+import org.apache.logging.log4j.Logger;
+
 import com.bank.model.Account;
 import com.bank.model.AccountAction;
 import com.bank.model.AccountStatus;
 import com.bank.model.AccountType;
 import com.bank.model.Customer;
-import com.bank.serialize.AccountReaderWriter;
+import com.bank.model.MessageHolder;
+import com.bank.model.exception.BankException;
+import com.bank.services.AccountService;
+import com.bank.services.CustomerService;
 
 public class CustomerHomepage {
 	private CustomerHomepage() {}
 	private static Scanner sc = Util.getScanner();
+	private static Logger log = Util.getLogger();
 	private static boolean doNotLogout = true;
 	
 	public static void displayHomepage(Customer c) {
@@ -64,7 +66,7 @@ public class CustomerHomepage {
 				case 2: listAccounts(c); break;
 				case 3: viewAccountDetailsDialog(c); break;
 				case 4: createNewAccountDialog(c); break;
-				case 5: logout(); break;
+				case 5: logout(c); break;
 				default: System.out.println("Please choose an option from the menu"); break;
 				}
 			} catch (NumberFormatException e) {
@@ -77,12 +79,7 @@ public class CustomerHomepage {
 		Set<Integer> acctIds = c.getAccounts();
 		System.out.println("Here's an overview of your accounts:");
 		for (Integer id : acctIds) {
-			try {
-				System.out.println(getAccountById(id));
-			} catch (IOException e) {
-				System.err.println("Something went wrong - unable to fetch your accounts");
-				e.printStackTrace();
-			}
+			System.out.println(AccountService.getAccountById(id));
 		}
 	}
 	
@@ -100,19 +97,14 @@ public class CustomerHomepage {
 					continue;
 				}
 				if (acctIds.contains(acctId)) {
-					try {
-						acct = getAccountById(acctId);
-						System.out.println("Account details:");
-						System.out.println("Name: \t\t" + acct.getName());
-						System.out.println("Type: \t\t" + acct.getAcctType());
-						System.out.println("Status: \t" + acct.getAcctStatus());
-						System.out.println("Balance: \t"+acct.getCurrency().getSymbol()+acct.getBalance());
-						System.out.println("Date created: \t"+acct.getCreationDate());
-						System.out.println();
-					} catch (IOException e) {
-						e.printStackTrace();
-						continue;
-					}	
+					acct = AccountService.getAccountById(acctId);
+					System.out.println("Account details:");
+					System.out.println("Name: \t\t" + acct.getName());
+					System.out.println("Type: \t\t" + acct.getAcctType());
+					System.out.println("Status: \t" + acct.getAcctStatus());
+					System.out.println("Balance: \t"+acct.getCurrency().getSymbol()+acct.getBalance());
+					System.out.println("Date created: \t"+acct.getCreationDate());
+					System.out.println();
 					break;
 				} else {
 					System.err.println("Sorry, that's not one of your accounts");
@@ -131,6 +123,7 @@ public class CustomerHomepage {
 				case 3: accountActionDialog(c, acct, AccountAction.TRANSFER); break;
 				case 4: continue;
 				case 5: break;
+				default: break;
 				}
 			} catch (InputMismatchException e) {
 				System.err.println("Please enter a number from the menu above");
@@ -138,15 +131,16 @@ public class CustomerHomepage {
 		} while (false);
 	}
 	
-	public static void accountActionDialog(Customer c, Account acct, AccountAction aa) {
+	public static void accountActionDialog(Customer c, Account acct, AccountAction action) {
 		do {
 			if (!acct.getAcctStatus().equals(AccountStatus.ACTIVE)) {
 				System.err.println("Sorry, this account has a status of " +acct.getAcctStatus());
-				System.err.println("Therefore, deposits are prohibited from this account");
+				System.err.println("Therefore, transactions are prohibited on this account");
+				log.warn(MessageHolder.getIllegalTransactionString(acct, c));
 				break;
 			}
 			String s = "";
-			switch (aa) {
+			switch (action) {
 			case DEPOSIT: s = "deposit"; break;
 			case WITHDRAW: s = "withdraw"; break;
 			case TRANSFER: s = "transfer"; break;
@@ -157,29 +151,26 @@ public class CustomerHomepage {
 				if (Util.getNumberOfDecimalPlaces(amount) > 2) {
 					System.err.println("Sorry, you cannot enter currency values with more than 2 decimal places");
 				} else {
-					switch (aa) {
-					case DEPOSIT: acct.depositMoney(amount); break;
-					case WITHDRAW: acct.withdrawMoney(amount); break;
+					switch (action) {
+					case DEPOSIT: AccountService.depositMoney(amount, acct); break;
+					case WITHDRAW: AccountService.withdrawMoney(amount, acct); break;
 					case TRANSFER: {
 						System.out.println("Which account would you like to transfer your funds to?");
 						int transferAcctId = Integer.parseInt(sc.nextLine());
-						Account transferTo = getAccountById(transferAcctId);
-						AccountReaderWriter.transferFunds(acct, transferTo, amount);
+						Account transferTo = AccountService.getAccountById(transferAcctId);
+						AccountService.transferFunds(acct, transferTo, amount);
 						} break;
 					}
-					AccountReaderWriter.saveAccount(acct);
-					if (aa != AccountAction.TRANSFER) {
+					// saving is done in the service methods, no need to explicitly save accounts here
+					if (action != AccountAction.TRANSFER) {
 						System.out.println("Account #"+acct.getId() + " new balance: " +acct.getCurrency().getSymbol()+acct.getBalance());
-						System.out.println("Account successfully saved, returning to main menu");
-					} else {
-						System.out.println("Accounts successfully saved, returning to main menu");
 					}
-					
 				}
 			} catch (NumberFormatException e) {
 				System.err.println("Please enter a number");
-			} catch (IOException e) {
-				e.printStackTrace();
+			} catch(BankException e) {
+				log.error(MessageHolder.exceptionLogMsg, e);
+				System.err.println(e.getMessage());
 			}
 		} while (false);
 	}
@@ -214,12 +205,7 @@ public class CustomerHomepage {
 		for (String s : editLoopArgs) {
 			editInputLoop(c, s);
 		}
-		try {
-			saveCustomer(c);
-		} catch (IOException e) {
-			System.err.println("There was a problem saving your profile information :(");
-			e.printStackTrace();
-		}
+		CustomerService.saveCustomer(c);
 	}
 	
 	public static void editInputLoop(Customer c, String option) {
@@ -242,16 +228,18 @@ public class CustomerHomepage {
 						c.setPhoneNumber(newValue);
 					} catch(IllegalArgumentException e) {
 						System.err.println("Sorry, that's not a valid phone number"); continue;
-					}; break;
+					} break;
+				default: break; // do nothing
 				}
-				break;
-			} else if (s.equals("no") || s.equals("n")) {break;}
+				break; // we've set the field, so we can break out of the while loop now
+			} else if (s.equals("no") || s.equals("n")) {break;} // if the user chooses not to edit the field, we simply break out of the loop
 			else { System.err.println("Please input either yes or no (y/n)"); }
 		}
 	}
 	
-	public static void logout() {
+	public static void logout(Customer c) {
 		System.out.println("Logging out now...");
+		log.info("Customer " + c.getUsername() + " logged out");
 		doNotLogout = false;
 	}
 	
@@ -275,15 +263,16 @@ public class CustomerHomepage {
 			}
 		}
 		System.out.println("What currency should this account be denominated in?");
-		System.out.println("Please choose from CONSOLE BANK supported currencies:");
+		System.out.println("Please choose from CONSOLE BANK supported currencies: (default is USD)");
 		System.out.println("1 - US Dollars");
 		System.out.println("2 - Euros");
 		while (true) {
 			try {
 				int option = Integer.parseInt(sc.nextLine());
 				switch (option) {
-				case 1: break; // USD is already default
+				case 1: break; // USD is already default in the Account class
 				case 2: acct.setCurrency(Currency.getInstance("EUR")); break;
+				default: break; // USD is already default in the Account class
 				}
 				break;
 			} catch (InputMismatchException e) {
@@ -297,13 +286,7 @@ public class CustomerHomepage {
 		BigDecimal deposit = new BigDecimal(sc.nextLine());
 		acct.setBalance(deposit);
 		System.out.println("Setting up your account...");
-		try {
-			AccountReaderWriter.registerNewAccount(c, acct);
-		} catch (IOException e) {
-			System.err.println("Sorry, unable to create your account :(");
-			e.printStackTrace();
-		}
+		AccountService.registerNewAccount(c, acct);
 		showMenu(c);
 	}
-	
 }

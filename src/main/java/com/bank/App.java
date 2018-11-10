@@ -1,25 +1,25 @@
 package com.bank;
 
-import static com.bank.serialize.CustomerReaderWriter.getCustomerByUsername;
-import static com.bank.serialize.CustomerReaderWriter.registerNewCustomer;
-
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.InputMismatchException;
 import java.util.Scanner;
 
+import org.apache.logging.log4j.Logger;
+
 import com.bank.model.Admin;
 import com.bank.model.Customer;
 import com.bank.model.CustomerStatus;
 import com.bank.model.MessageHolder;
-import com.bank.serialize.AdminReaderWriter;
 import com.bank.serialize.CustomerReaderWriter;
+import com.bank.services.AdminService;
+import com.bank.services.CustomerService;
 
 public class App {
 	private static boolean doNotExit = true;
 	private static Scanner sc = Util.getScanner();
+	private static Logger log = Util.getLogger();
 	
     public static void main( String[] args )
     {
@@ -43,6 +43,7 @@ public class App {
         			case 3: customerRegister(); break;
         			case 4: adminRegister(); break;
         			case 5: exit(); break;
+        			default: throw new InputMismatchException();
         		}
         	} catch (InputMismatchException ime) {
         		System.err.println("Sorry, please make a valid choice");
@@ -60,52 +61,42 @@ public class App {
 	    	String uname = sc.nextLine();
 	    	System.out.println("Please enter your password: ");
 	    	String pword = sc.nextLine();
-			try {
-				c = getCustomerByUsername(uname);
-			} catch (FileNotFoundException e) {
-				System.err.println(MessageHolder.invalidCredentials);
-				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			if (c.getPassword().equals(pword)) {
+	    	c = CustomerService.getCustomerByUsername(uname);
+	    	if (c == null)
+	    		System.err.println(MessageHolder.invalidCredentials);
+	    	else if (c.getPassword().equals(pword)) {
 	    		System.out.println("Login successful!");
+	    		log.info("Customer {} logged in successfully", c.getUsername());
 	    	} else {
+	    		log.error("Invalid credentials for user: " + c.getUsername());
 	    		System.err.println(MessageHolder.invalidCredentials);
 	    		exit = false;
 	    	}
     	}
-    	if (c.getCustStatus().equals(CustomerStatus.SUSPENDED))
+    	if (c.getCustStatus() != null && c.getCustStatus().equals(CustomerStatus.SUSPENDED))
     		System.out.println("Sorry, your user account has been suspended - please contact an administrator to reactivate your account");
     	else
     		CustomerHomepage.displayHomepage(c);
     }
     
     public static void adminLogin() {
-    	System.out.println();
-    	System.out.println("Please enter your username: ");
-    	String uname = sc.nextLine();
-    	System.out.println("Please enter your password: ");
-    	String pword = sc.nextLine();
-    	Admin a = null;
-		try {
-			a = AdminReaderWriter.getAdminByUsername(uname);
-		} catch (FileNotFoundException e) {
-			System.err.println(MessageHolder.invalidCredentials);
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-    	while(true) {
-    		if (a == null) {
-    			adminLogin(); // THIS COULD BE SOURCE OF LOGOUT BUG
-    		}
-    		if (a.getPassword().equals(pword)) {
+    	Admin a = new Admin();
+    	boolean exit = false;
+    	while (!exit) {
+    		System.out.println();
+        	System.out.println("Please enter your username: ");
+        	String uname = sc.nextLine();
+        	System.out.println("Please enter your password: ");
+        	String pword = sc.nextLine();
+        	a = AdminService.getAdminByUsername(uname);
+        	if (a == null)
+    			System.err.println(MessageHolder.invalidCredentials);
+        	else if (a.getPassword().equals(pword)) {
+    			exit = true;
         		System.out.println("Login successful!");
-        		break;
+        		log.info("Admin {} logged in successfully", a.getUsername());
         	} else {
         		System.err.println(MessageHolder.invalidCredentials);
-        		adminLogin();
         	}
     	}
     	AdminHomepage.displayHomepage(a);
@@ -127,7 +118,7 @@ public class App {
 				alreadyExists = CustomerReaderWriter.checkNewUsername(uname);
 			} catch (IOException e) {
 				System.err.println(MessageHolder.ioMessage);
-				e.printStackTrace();
+				log.error(MessageHolder.exceptionLogMsg, e);
 				System.out.println("Let's try again.. please re-enter the username");
 				continue;
 			}
@@ -141,12 +132,7 @@ public class App {
     	System.out.println("Great! Now set a password for your account:");
     	String pword = sc.nextLine();
     	newAdmin.setPassword(pword);
-    	try {
-			AdminReaderWriter.registerNewAdmin(newAdmin);
-		} catch (IOException e) {
-			System.err.println("Something went wrong while registering... try again");
-			e.printStackTrace();
-		}
+    	AdminService.registerAdmin(newAdmin);
     }
     
     public static void customerRegister() {
@@ -167,12 +153,14 @@ public class App {
 				alreadyExists = CustomerReaderWriter.checkNewUsername(uname);
 			} catch (IOException e) {
 				System.err.println(MessageHolder.ioMessage);
-				e.printStackTrace();
+				log.error("Exception thrown: ",e);
 				System.out.println("Let's try again.. please re-enter the username");
 				continue;
 			}
-        	if (alreadyExists)
+        	if (alreadyExists) {
         		System.err.println(MessageHolder.usernameExists);
+        		log.error("Username {} already exists", uname);
+        	}
         	else {
         		c.setUsername(uname);
         		break;
@@ -202,12 +190,7 @@ public class App {
     	c.setPhoneNumber(num);
     	System.out.println("Thanks! Let's get you registered...");
     	c.setCustStatus(CustomerStatus.ACTIVE);
-    	try {
-			registerNewCustomer(c);
-		} catch (IOException e) {
-			System.err.println(MessageHolder.ioMessage);
-			e.printStackTrace();
-		}
+    	CustomerService.registerCustomer(c);
     	System.out.println("Now, you can login with your username / password");
     	customerLogin();
     }

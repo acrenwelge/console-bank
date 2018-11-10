@@ -1,31 +1,26 @@
 package com.bank;
 
-import static com.bank.serialize.AccountReaderWriter.getAllAccounts;
-import static com.bank.serialize.AccountReaderWriter.getAllAccountsByStatus;
-import static com.bank.serialize.CustomerReaderWriter.getCustomerByUsername;
-
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.InputMismatchException;
 import java.util.List;
 import java.util.Scanner;
-import java.util.Set;
+
+import org.apache.logging.log4j.Logger;
 
 import com.bank.model.Account;
 import com.bank.model.AccountStatus;
 import com.bank.model.Admin;
 import com.bank.model.Customer;
 import com.bank.model.MessageHolder;
-import com.bank.serialize.AccountReaderWriter;
+import com.bank.model.exception.BankException;
 import com.bank.services.AccountService;
 import com.bank.services.CustomerService;
 
 public class AdminHomepage {
 	private AdminHomepage() {}
 	private static Scanner sc = Util.getScanner();
+	private static Logger log = Util.getLogger();
 	private static boolean doNotLogout = true;
 	
 	public static void displayHomepage(Admin a) {
@@ -51,7 +46,7 @@ public class AdminHomepage {
 				case 2: viewAllAccounts(); break;
 				case 3: viewCustomerDialog(); break;
 				case 4: initTransferDialog(); break;
-				case 5: logout(); break;
+				case 5: logout(a); break;
 				default: System.out.println("Please choose an option from the menu"); break;
 				}
 			} catch (NumberFormatException e) {
@@ -61,37 +56,31 @@ public class AdminHomepage {
 	}
 	
 	public static void showPendingAccounts() {
-		try {
-			List<Account> allPending = getAllAccountsByStatus(AccountStatus.UNAPPROVED);
-			if (!allPending.isEmpty()) {
-				System.out.println("Here are all currently pending accounts:");
-				allPending.forEach(System.out::println);
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
+		List<Account> allPending = AccountService.getAllAccountsByStatus(AccountStatus.UNAPPROVED);
+		if (allPending.isEmpty())
+			System.out.println("There are no currently pending accounts");
+		else {
+			System.out.println("Here are all currently pending accounts:");
+			allPending.forEach(System.out::println);
 		}
 	}
 	
 	public static void reviewAllPendingAccounts() {
-		try {
-			List<Account> allPending = getAllAccountsByStatus(AccountStatus.UNAPPROVED);
-			if (allPending.isEmpty()) System.out.println("No accounts currently pending approval");
-			else {
-				System.out.println("Would you like to mass-approve all pending, unapproved accounts? (y/n)");
-				String choice = sc.nextLine();
-				if (choice.equals("y") || choice.equals("yes")) {
-					AccountService.approveAccounts(allPending);
-				}
-				else if (choice.equals("n") || choice.equals("no")) {
-					reviewIndividualPendingAccounts(allPending);
-				}
+		List<Account> allPending = AccountService.getAllAccountsByStatus(AccountStatus.UNAPPROVED);
+		if (allPending.isEmpty()) System.out.println("No accounts currently pending approval");
+		else {
+			System.out.println("Would you like to mass-approve all pending, unapproved accounts? (y/n)");
+			String choice = sc.nextLine();
+			if (choice.equals("y") || choice.equals("yes")) {
+				AccountService.approveAccounts(allPending);
 			}
-		} catch (IOException e) {
-			e.printStackTrace();
+			else if (choice.equals("n") || choice.equals("no")) {
+				reviewIndividualPendingAccounts(allPending);
+			}
 		}
 	}
 	
-	public static void reviewIndividualPendingAccounts(List<Account> allPending) throws IOException {
+	public static void reviewIndividualPendingAccounts(List<Account> allPending) {
 		for (Account a : allPending) {
 			System.out.println("Account #" + a.getId() + ": " + a);
 			System.out.println("Approve this account? (y/n)");
@@ -120,15 +109,9 @@ public class AdminHomepage {
 	}
 	
 	public static void viewAllAccounts() {
-		try {
-			List<Account> allAccounts = getAllAccounts();
-			System.out.println("All accounts at CONSOLE BANK:");
-			for (Account acct: allAccounts) {
-				System.out.println(acct);
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		List<Account> allAccounts = AccountService.getAllAccounts();
+		System.out.println("All accounts at CONSOLE BANK:");
+		allAccounts.forEach(System.out::println);
 	}
 	
 	public static void viewCustomerDialog() {
@@ -140,13 +123,8 @@ public class AdminHomepage {
 			while (true) {
 				String custUsername = sc.nextLine();
 				if (custUsername.equals("exit")) break;
-				try {
-					cust = getCustomerByUsername(custUsername);
-					break;
-				} catch (IOException e) {
-					System.err.println("Looks like that username does not exist. Try again or enter 'exit' to quit");
-					e.printStackTrace();
-				}
+				cust = CustomerService.getCustomerByUsername(custUsername);
+				if (cust != null) break;
 			}
 			System.out.println("Customer " + cust.getId() + " details:");
 			System.out.println(cust);
@@ -171,22 +149,16 @@ public class AdminHomepage {
 				}
 			} catch (InputMismatchException e) {
 				System.err.println(MessageHolder.numberFormatException);
-			} catch (IOException e) {
-				e.printStackTrace();
 			}
 		}
 	}
 	
-	public static void approveCustomerAccounts(Customer c) throws IOException {
+	public static void approveCustomerAccounts(Customer c) {
 		List<Account> customerPendingAccounts = new ArrayList<>();
 		c.getAccounts().forEach((Integer id) -> {
-			try {
-				Account acct = AccountReaderWriter.getAccountById(id);
-				if (acct.getAcctStatus().equals(AccountStatus.UNAPPROVED))
-					customerPendingAccounts.add(acct);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+			Account acct = AccountService.getAccountById(id);
+			if (acct.getAcctStatus().equals(AccountStatus.UNAPPROVED))
+				customerPendingAccounts.add(acct);
 		});
 		if (customerPendingAccounts.isEmpty())
 			System.out.println("Customer has no pending accounts");
@@ -201,15 +173,11 @@ public class AdminHomepage {
 		while (true) {
 			try {
 				actFromId = Integer.parseInt(sc.nextLine());
-				from = AccountReaderWriter.getAccountById(actFromId);
+				from = AccountService.getAccountById(actFromId);
 				break;
 			} catch (NumberFormatException nfe) {
 				System.err.println(MessageHolder.numberFormatException);
-			} catch (FileNotFoundException fnfe) {
-				System.err.println(MessageHolder.actNotFound);
-			} catch (IOException ioe) {
-				System.err.println(MessageHolder.ioMessage);
-			} 
+			}
 		}
 		System.out.println("Which account would you like to transfer funds TO?");
 		int actToId = 0;
@@ -217,27 +185,25 @@ public class AdminHomepage {
 		while (true) {
 			try {
 				actToId = Integer.parseInt(sc.nextLine());
-				to = AccountReaderWriter.getAccountById(actToId);
+				to = AccountService.getAccountById(actToId);
 				break;
 			} catch (NumberFormatException nfe) {
 				System.err.println(MessageHolder.numberFormatException);
-			} catch(FileNotFoundException fnfe) {
-				System.err.println(MessageHolder.actNotFound);
-			} catch (IOException e) {
-				System.err.println(MessageHolder.ioMessage);
 			}
 		}
 		System.out.println("How much would you like to transfer?");
 		BigDecimal amt = new BigDecimal(sc.nextLine());
 		try {
-			AccountReaderWriter.transferFunds(from, to, amt);
-		} catch (IOException e) {
-			System.err.println(MessageHolder.ioMessage);
+			AccountService.transferFunds(from, to, amt);
+		} catch (BankException e) {
+			log.error(MessageHolder.exceptionLogMsg, e);
+			System.err.println(e.getMessage());
 		}
 	}
 	
-	public static void logout() {
+	public static void logout(Admin a) {
 		System.out.println("Logging out now...");
+		log.info("Admin " + a.getUsername() + " logged out");
 		doNotLogout = false;
 	}
 	

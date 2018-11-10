@@ -10,7 +10,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,13 +19,13 @@ import com.bank.model.AccountStatus;
 import com.bank.model.Customer;
 
 public class AccountReaderWriter {
-	public static String acctDir = "Accounts/";
-	public static String fileExt = ".dat";
-	public static String acctMaxIdFile = "maxaccountid.txt";
+	public static final String ACCT_DIR = "Accounts/";
+	public static final String FILE_EXT = ".dat";
+	public static final String ACCT_MAX_ID_FILE = "maxaccountid.txt";
 	
 	public static List<Account> getAllAccounts() throws IOException {
 		List<Account> allAccounts = new ArrayList<>();
-		File[] files = new File(acctDir).listFiles();
+		File[] files = new File(ACCT_DIR).listFiles();
 		for (File f : files) {
 			try(ObjectInputStream ois = new ObjectInputStream(new FileInputStream(f))) {
 				try {
@@ -42,7 +41,7 @@ public class AccountReaderWriter {
 	
 	public static List<Account> getAllAccountsByStatus(AccountStatus as) throws IOException {
 		List<Account> allOfStatus = new ArrayList<>();
-		File[] files = new File(acctDir).listFiles();
+		File[] files = new File(ACCT_DIR).listFiles();
 		for (File f : files) {
 			try(ObjectInputStream ois = new ObjectInputStream(new FileInputStream(f))) {
 				try {
@@ -57,7 +56,7 @@ public class AccountReaderWriter {
 	}
 	
 	public static Account getAccountById(int id) throws IOException {
-		try(ObjectInputStream ois = new ObjectInputStream(new FileInputStream(acctDir+id+fileExt))) {
+		try(ObjectInputStream ois = new ObjectInputStream(new FileInputStream(ACCT_DIR+id+FILE_EXT))) {
 			return (Account) ois.readObject();
 		} catch (ClassNotFoundException | ClassCastException e) {
 			System.err.println("Something went wrong while reading account from file");
@@ -68,7 +67,7 @@ public class AccountReaderWriter {
 	
 	public static void registerNewAccount(Customer cust, Account acct) throws IOException {
 		acct.setCreationDate(LocalDate.now());
-		File f = new File(acctMaxIdFile); // file that stores the current max id
+		File f = new File(ACCT_MAX_ID_FILE); // file that stores the current max id
 		int currentMax = 0; // will update this later on
 		if (f.exists()) {
 			try (BufferedReader br = new BufferedReader(new FileReader(f))) {
@@ -91,23 +90,15 @@ public class AccountReaderWriter {
 	}
 	
 	public static void saveAccount(Account acct) throws IOException {
-		File custFile = new File("Accounts/"+acct.getId()+".dat");
+		File custFile = new File(ACCT_DIR+acct.getId()+FILE_EXT);
 		if (!custFile.getParentFile().exists()) { // create 'Accounts' directory if it doesn't exist
 			boolean success = custFile.getParentFile().mkdirs();
 			if (success) System.out.println("Created 'Accounts' folder");
 			else System.err.println("Unable to create 'Accounts' folder");
 		}
 		custFile.createNewFile(); // create the file if it doesn't already exist
-		ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(custFile));
-		oos.writeObject(acct);
-		oos.close();
-	}
-
-	public static void transferFunds(Account from, Account to, BigDecimal amt) throws IOException {
-		Account.transferFunds(from, to, amt);
-		saveAccount(from);
-		saveAccount(to);
-		System.out.println("Account #"+from.getId() + " new balance: "+from.getCurrency().getSymbol() + from.getBalance());
-		System.out.println("Account #"+to.getId() + " new balance: " +to.getCurrency().getSymbol()+ to.getBalance());
+		try(ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(custFile))) {
+			oos.writeObject(acct);			
+		}
 	}
 }

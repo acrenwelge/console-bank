@@ -16,27 +16,7 @@ public class Account implements Serializable {
 	private BigDecimal balance = BigDecimal.ZERO;
 	private AccountStatus acctStatus;
 	private AccountType acctType;
-	
-	// Transaction methods
-	
-	public void depositMoney(BigDecimal deposit) {
-		this.balance = this.balance.add(deposit);
-	}
-	
-	public void withdrawMoney(BigDecimal amount) {
-		if (amount.doubleValue() > this.balance.doubleValue()) {
-			throw new IllegalArgumentException("Overdraft error - you can't withdraw that much");
-		}
-		else {
-			this.balance = this.balance.subtract(amount);
-		}
-	}
-	
-	public static void transferFunds(Account from, Account to, BigDecimal amount) {
-		from.withdrawMoney(amount);
-		to.depositMoney(amount);
-	}
-	
+		
 	// getters/setters
 	
 	public int getId() {

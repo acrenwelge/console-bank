@@ -6,13 +6,8 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
 
-public class Customer implements Serializable, User {
+public class Customer extends User implements Serializable {
 	private static final long serialVersionUID = 6163435983108208454L;
-	private int id;
-	private String username;
-	private String password;
-	private String firstName;
-	private String lastName;
 	private LocalDate dob; // date of birth
 	private Set<Integer> accounts = new TreeSet<>();
 	private LocalDate customerSince;
@@ -21,46 +16,6 @@ public class Customer implements Serializable, User {
 	private String phoneNumber;
 	private CustomerStatus custStatus;
 	
-	public int getId() {
-		return id;
-	}
-	public void setId(int id) {
-		this.id = id;
-	}
-	public String getUsername() {
-		return username;
-	}
-	public void setUsername(String username) {
-		if (username != null && !username.isEmpty()) // can't be empty or null
-			this.username = username;
-		else
-			throw new IllegalArgumentException("Username cannot be empty or null");
-	}
-	public String getPassword() {
-		return this.password;
-	}
-	public void setPassword(String pword) {
-		this.password = pword;
-	}
-	public String getFirstName() {
-		return firstName;
-	}
-	public void setFirstName(String firstName) {
-		if (validateName(firstName))
-			this.firstName = firstName;
-		else 
-			throw new IllegalArgumentException("Must input valid name");
-	}
-	public String getLastName() {
-		return lastName;
-	}
-	
-	public void setLastName(String lastName) {
-		if (validateName(lastName))
-			this.lastName = lastName;
-		else 
-			throw new IllegalArgumentException("Must input valid name");
-	}
 	public LocalDate getDob() {
 		return dob;
 	}
@@ -120,10 +75,6 @@ public class Customer implements Serializable, User {
 	}
 	public void setCustStatus(CustomerStatus custStatus) {
 		this.custStatus = custStatus;
-	}
-	
-	public boolean validateName(String name) {
-		return Pattern.matches("^[a-zA-Z]+(([',. -][a-zA-Z ])?[a-zA-Z]*)*$", name);
 	}
 	
 	@Override
@@ -193,12 +144,9 @@ public class Customer implements Serializable, User {
 				+ address + ", email=" + email + ", phoneNumber=" + phoneNumber + "]";
 	}
 	
-	public Customer(int id, String firstName, String lastName, LocalDate dob, Set<Integer> accounts,
+	public Customer(int id, String firstName, String lastName, String username, String pword, LocalDate dob, Set<Integer> accounts,
 			LocalDate customerSince, String address, String email, String phoneNumber) {
-		super();
-		this.id = id;
-		this.firstName = firstName;
-		this.lastName = lastName;
+		super(id, username, pword, firstName, lastName);
 		this.dob = dob;
 		this.accounts = accounts;
 		this.customerSince = customerSince;

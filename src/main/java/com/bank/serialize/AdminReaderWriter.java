@@ -19,13 +19,13 @@ import java.util.stream.Stream;
 import com.bank.model.Admin;
 
 public class AdminReaderWriter {
-	public static String adminDir = "Admins/";
-	public static String adminMaxIdFile = "maxadminid.txt";
-	public static String fileExt = ".dat";
+	public static final String ADMIN_DIR = "Admins/";
+	public static final String ADMIN_MAX_ID_FILE = "maxadminid.txt";
+	public static final String FILE_EXT = ".dat";
 	
 	public static boolean checkNewUsername(String username) throws IOException {
-		Predicate<Path> checkPath = path -> path.getFileName().toString().equals(username+fileExt);
-		File f = new File(adminDir);
+		Predicate<Path> checkPath = path -> path.getFileName().toString().equals(username+FILE_EXT);
+		File f = new File(ADMIN_DIR);
 		if (!f.exists()) f.mkdir(); // create directory if it doesn't exist
 		try (Stream<Path> paths = Files.walk(Paths.get(f.getAbsolutePath()))) {
 		    return paths
@@ -35,19 +35,19 @@ public class AdminReaderWriter {
 	}
 	
 	public static void saveAdmin(Admin a) throws IOException {
-		File adminFolder = new File(adminDir);
-		File custFile = new File(adminDir+a.getUsername()+fileExt);
+		File adminFolder = new File(ADMIN_DIR);
+		File custFile = new File(ADMIN_DIR+a.getUsername()+FILE_EXT);
 		if (!adminFolder.exists()) {
 			adminFolder.mkdir();
 		}
 		custFile.createNewFile(); // create the file if it doesn't already exist
-		ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(custFile));
-		oos.writeObject(a);
-		oos.close();
+		try(ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(custFile))) {
+			oos.writeObject(a);
+		}
 	}
 	
 	public static void registerNewAdmin(Admin a) throws IOException {
-		File f = new File(adminMaxIdFile); // file that stores the current max id
+		File f = new File(ADMIN_MAX_ID_FILE); // file that stores the current max id
 		int currentMax = 0; // will update this later on
 		if (f.exists()) {
 			try (BufferedReader br = new BufferedReader(new FileReader(f))) {
@@ -70,7 +70,7 @@ public class AdminReaderWriter {
 	}
 	
 	public static Admin getAdminByUsername(String username) throws IOException {
-		try(ObjectInputStream ois = new ObjectInputStream(new FileInputStream(adminDir+username+fileExt))) {
+		try(ObjectInputStream ois = new ObjectInputStream(new FileInputStream(ADMIN_DIR+username+FILE_EXT))) {
 			return (Admin) ois.readObject();
 		} catch (ClassNotFoundException | ClassCastException e) {
 			System.err.println("Something went wrong while reading customer from file");

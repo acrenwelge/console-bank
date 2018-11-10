@@ -5,16 +5,12 @@ import static org.junit.Assert.fail;
 
 import java.time.LocalDate;
 import java.time.Month;
-import java.util.HashMap;
-import java.util.Map;
 
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-
-import com.bank.model.Customer;
 
 public class CustomerTest {
 	private Customer cust;
@@ -36,22 +32,6 @@ public class CustomerTest {
 	public void tearDown() throws Exception {
 	}
 
-	@Test
-	public void testValidateName() {
-		Map<String,Boolean> names = new HashMap<>();
-		names.put("Andrew", true);
-		names.put("Andr3w", false);
-		names.put("Andrew!", false);
-		names.put("Andrew?", false);
-		names.put("And-rew", true);
-		names.put("And@rew", false);
-		names.put("", false);
-		for (String s : names.keySet()) {
-			boolean result = cust.validateName(s);
-			assertEquals(result, names.get(s));
-		}
-	}
-	
 	@Test(expected=IllegalArgumentException.class)
 	public void testDobSad() {
 		LocalDate ld = LocalDate.of(LocalDate.now().getYear()+1, 1, 1); // next year - invalid
