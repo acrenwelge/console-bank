@@ -1,6 +1,7 @@
 package com.bank;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Currency;
 import java.util.InputMismatchException;
 import java.util.Scanner;
@@ -14,9 +15,14 @@ import com.bank.model.AccountStatus;
 import com.bank.model.AccountType;
 import com.bank.model.Customer;
 import com.bank.model.MessageHolder;
+import com.bank.model.Transaction;
 import com.bank.model.exception.BankException;
+import com.bank.model.exception.IllegalDepositException;
+import com.bank.model.exception.IllegalWithdrawalException;
+import com.bank.model.exception.OverdraftException;
 import com.bank.services.AccountService;
 import com.bank.services.CustomerService;
+import com.bank.services.TransactionService;
 
 public class CustomerHomepage {
 	private CustomerHomepage() {}
@@ -152,14 +158,9 @@ public class CustomerHomepage {
 					System.err.println("Sorry, you cannot enter currency values with more than 2 decimal places");
 				} else {
 					switch (action) {
-					case DEPOSIT: AccountService.depositMoney(amount, acct); break;
-					case WITHDRAW: AccountService.withdrawMoney(amount, acct); break;
-					case TRANSFER: {
-						System.out.println("Which account would you like to transfer your funds to?");
-						int transferAcctId = Integer.parseInt(sc.nextLine());
-						Account transferTo = AccountService.getAccountById(transferAcctId);
-						AccountService.transferFunds(acct, transferTo, amount);
-						} break;
+					case DEPOSIT:  depositFunds(c,acct, amount);   break;
+					case WITHDRAW: withdrawFunds(c, acct, amount); break;
+					case TRANSFER: transferFunds(c, acct, amount); break;
 					}
 					// saving is done in the service methods, no need to explicitly save accounts here
 					if (action != AccountAction.TRANSFER) {
@@ -173,6 +174,30 @@ public class CustomerHomepage {
 				System.err.println(e.getMessage());
 			}
 		} while (false);
+	}
+	
+	public static void depositFunds(Customer c, Account acct, BigDecimal amount) throws IllegalDepositException {
+		AccountService.depositMoney(amount, acct);
+		Transaction tr = new Transaction(AccountAction.DEPOSIT,LocalDateTime.now(), amount, c, acct);
+		TransactionService.saveTransaction(tr);
+		log.info(tr);
+	}
+	
+	public static void withdrawFunds(Customer c, Account acct, BigDecimal amount) throws OverdraftException, IllegalWithdrawalException {
+		AccountService.withdrawMoney(amount, acct);
+		Transaction tr = new Transaction(AccountAction.WITHDRAW,LocalDateTime.now(), amount, c, acct);
+		TransactionService.saveTransaction(tr);
+		log.info(tr);
+	}
+	
+	public static void transferFunds(Customer c, Account from, BigDecimal amount) throws BankException {
+		System.out.println("Which account would you like to transfer your funds to?");
+		int transferAcctId = Integer.parseInt(sc.nextLine());
+		Account transferTo = AccountService.getAccountById(transferAcctId);
+		AccountService.transferFunds(from, transferTo, amount);
+		Transaction tr = new Transaction(LocalDateTime.now(), amount, c, from, transferTo);
+		TransactionService.saveTransaction(tr);
+		log.info(tr);
 	}
 	
 	public static void showPersonalInfo(Customer c) {

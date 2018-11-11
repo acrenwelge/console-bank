@@ -34,9 +34,9 @@ public class CustomerReaderWriter {
 	public static void saveCustomer(Customer cust) throws IOException {
 		File custFile = new File("Customers/"+cust.getUsername()+".dat");
 		custFile.createNewFile(); // create the file if it doesn't already exist
-		ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(custFile));
-		oos.writeObject(cust);
-		oos.close();
+		try(ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(custFile))) {
+			oos.writeObject(cust);
+		}
 	}
 	
 	public static void registerNewCustomer(Customer cust) throws IOException {

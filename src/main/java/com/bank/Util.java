@@ -14,9 +14,9 @@ import org.apache.logging.log4j.Logger;
 import com.bank.model.MessageHolder;
 
 public class Util {
-	
 	private static ClassLoader cl = Thread.currentThread().getContextClassLoader();
 	private static Scanner sc = new Scanner(System.in);
+	public static final String TRANSACTION_DIR = "Transactions/";
 	
 	public ClassLoader getClassLoader() {
 		return cl;
@@ -29,6 +29,8 @@ public class Util {
 	public static Logger getLogger() {
 		return LogManager.getLogger(com.bank.App.class);
 	}
+	
+	// Interfaces and generic methods for centralizing catching/handling IOExceptions
 	
 	public interface NoReturnMethod {
 		public void doSomething() throws IOException;
@@ -81,10 +83,20 @@ public class Util {
 		return null;
 	}
 	
+	/**
+	 * Gets a file from src/main/resources
+	 * @param fileName
+	 * @return
+	 */
 	public static File getFileFromResources(String fileName) {
 		return new File(cl.getResource(fileName).getFile());
 	}
 	
+	/**
+	 * Returns the number of decimal places in the BigDecimal
+	 * @param bigDecimal
+	 * @return
+	 */
 	public static int getNumberOfDecimalPlaces(BigDecimal bigDecimal) {
 	    String string = bigDecimal.stripTrailingZeros().toPlainString();
 	    int index = string.indexOf('.');

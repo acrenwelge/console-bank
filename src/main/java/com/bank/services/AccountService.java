@@ -90,12 +90,7 @@ public class AccountService {
 	}
 	
 	public static void saveAccount(Account acct) {
-		try {
-			AccountReaderWriter.saveAccount(acct);			
-		} catch (IOException e) {
-			log.error(MessageHolder.exceptionLogMsg, e);
-			System.err.println(MessageHolder.ioMessage);
-		}
+		Util.catchIOExceptionsVoid(() -> AccountReaderWriter.saveAccount(acct));		
 	}
 	
 	public static void registerNewAccount(Customer cust, Account acct) {

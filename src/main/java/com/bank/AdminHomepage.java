@@ -1,6 +1,7 @@
 package com.bank;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.InputMismatchException;
 import java.util.List;
@@ -13,9 +14,11 @@ import com.bank.model.AccountStatus;
 import com.bank.model.Admin;
 import com.bank.model.Customer;
 import com.bank.model.MessageHolder;
+import com.bank.model.Transaction;
 import com.bank.model.exception.BankException;
 import com.bank.services.AccountService;
 import com.bank.services.CustomerService;
+import com.bank.services.TransactionService;
 
 public class AdminHomepage {
 	private AdminHomepage() {}
@@ -45,7 +48,7 @@ public class AdminHomepage {
 				case 1: reviewAllPendingAccounts(); break;
 				case 2: viewAllAccounts(); break;
 				case 3: viewCustomerDialog(); break;
-				case 4: initTransferDialog(); break;
+				case 4: initTransferDialog(a); break;
 				case 5: logout(a); break;
 				default: System.out.println("Please choose an option from the menu"); break;
 				}
@@ -166,7 +169,7 @@ public class AdminHomepage {
 			reviewIndividualPendingAccounts(customerPendingAccounts);
 	}
 	
-	public static void initTransferDialog() {
+	public static void initTransferDialog(Admin admin) {
 		System.out.println("Which account would you like to transfer funds FROM?");
 		int actFromId = 0;
 		Account from = null;
@@ -195,6 +198,9 @@ public class AdminHomepage {
 		BigDecimal amt = new BigDecimal(sc.nextLine());
 		try {
 			AccountService.transferFunds(from, to, amt);
+			Transaction tr = new Transaction(LocalDateTime.now(), amt, admin, from, to);
+			TransactionService.saveTransaction(tr);
+			log.info(tr);
 		} catch (BankException e) {
 			log.error(MessageHolder.exceptionLogMsg, e);
 			System.err.println(e.getMessage());

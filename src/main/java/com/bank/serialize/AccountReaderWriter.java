@@ -11,7 +11,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.time.LocalDate;
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 import com.bank.model.Account;
@@ -24,7 +24,7 @@ public class AccountReaderWriter {
 	public static final String ACCT_MAX_ID_FILE = "maxaccountid.txt";
 	
 	public static List<Account> getAllAccounts() throws IOException {
-		List<Account> allAccounts = new ArrayList<>();
+		List<Account> allAccounts = new LinkedList<>();
 		File[] files = new File(ACCT_DIR).listFiles();
 		for (File f : files) {
 			try(ObjectInputStream ois = new ObjectInputStream(new FileInputStream(f))) {
@@ -40,7 +40,7 @@ public class AccountReaderWriter {
 	}
 	
 	public static List<Account> getAllAccountsByStatus(AccountStatus as) throws IOException {
-		List<Account> allOfStatus = new ArrayList<>();
+		List<Account> allOfStatus = new LinkedList<>();
 		File[] files = new File(ACCT_DIR).listFiles();
 		for (File f : files) {
 			try(ObjectInputStream ois = new ObjectInputStream(new FileInputStream(f))) {

@@ -6,6 +6,7 @@
 Accounts/
 Customers/
 Admins/
+Transactions/
 maxaccountid.txt
 maxadminid.txt
 maxuserid.txt
