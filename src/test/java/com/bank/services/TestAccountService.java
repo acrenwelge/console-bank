@@ -1,4 +1,4 @@
-package com.bank;
+package com.bank.services;
 
 import static org.junit.Assert.assertTrue;
 
@@ -12,7 +12,7 @@ import com.bank.model.Account;
 import com.bank.model.exception.BankException;
 import com.bank.services.AccountService;
 
-public class TestAccount {
+public class TestAccountService {
 	
 	Account acct1;
 	Account acct2;
@@ -69,13 +69,13 @@ public class TestAccount {
 	public void testTransfer() {
 		acct1.setBalance(BigDecimal.valueOf(39.93));
 		acct2.setBalance(BigDecimal.valueOf(24.41));
-//		try {
-//			AccountService.transferFunds(acct1, acct2, BigDecimal.valueOf(10.49));
-//		} catch (BankException e) {
-//			e.printStackTrace();
-//		}
-//		assertTrue(acct1.getBalance().compareTo(BigDecimal.valueOf(29.44)) == 0);
-//		assertTrue(acct2.getBalance().compareTo(BigDecimal.valueOf(34.90)) == 0);
+		try {
+			AccountService.transferFunds(acct1, acct2, BigDecimal.valueOf(10.49));
+		} catch (BankException e) {
+			e.printStackTrace();
+		}
+		assertTrue(acct1.getBalance().compareTo(BigDecimal.valueOf(29.44)) == 0);
+		assertTrue(acct2.getBalance().compareTo(BigDecimal.valueOf(34.90)) == 0);
 	}
 
 }

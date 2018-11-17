@@ -8,7 +8,7 @@ import java.util.List;
 
 import org.apache.logging.log4j.Logger;
 
-import com.bank.Util;
+import com.bank.util.Util;
 import com.bank.model.Account;
 import com.bank.model.AccountAction;
 import com.bank.model.AccountStatus;
@@ -22,7 +22,7 @@ import com.bank.serialize.AccountReaderWriter;
 
 public class AccountService {
 	private static Logger log = Util.getLogger();
-	private static int lowBalWarn = 100;
+	private static final int LOW_BAL_WARN = 100;
 	private AccountService() {}
 	
 	// Retrieving accounts
@@ -65,7 +65,7 @@ public class AccountService {
 			acct.setBalance(acct.getBalance().subtract(amount));
 			saveAccount(acct);
 			log.info(MessageHolder.getTransactionMsg(acct, amount, AccountAction.WITHDRAW));
-			if (acct.getBalance().compareTo(new BigDecimal(lowBalWarn)) < 0) {
+			if (acct.getBalance().compareTo(new BigDecimal(LOW_BAL_WARN)) < 0) {
 				String s = "Account #"+acct.getId()+ " has a low balance of " + acct.getCurrency().getSymbol()+ acct.getBalance(); 
 				log.warn(s);
 				System.err.println("WARNING: "+s);

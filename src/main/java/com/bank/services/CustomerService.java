@@ -2,7 +2,7 @@ package com.bank.services;
 
 import org.apache.logging.log4j.Logger;
 
-import com.bank.Util;
+import com.bank.util.Util;
 import com.bank.model.Customer;
 import com.bank.model.CustomerStatus;
 import com.bank.serialize.CustomerReaderWriter;

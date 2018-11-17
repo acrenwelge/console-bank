@@ -5,7 +5,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import com.bank.Util;
+import com.bank.util.Util;
 import com.bank.model.AccountAction;
 import com.bank.model.AccountType;
 import com.bank.model.Transaction;
@@ -22,6 +22,11 @@ public class TransactionService {
 	
 	public static List<Transaction> getAllTransactions() {
 		return Util.catchIOExceptionsReturnList(() -> GeneralReaderWriter.getAllObjects(Util.TRANSACTION_DIR));
+	}
+	
+	public static List<Transaction> getTransactionsByUsername(String username) {
+		List<Transaction> list = Util.catchIOExceptionsReturnList(() -> GeneralReaderWriter.getAllObjects(Util.TRANSACTION_DIR));
+		return filterByUser(list, username);
 	}
 	
 	// FILTERS

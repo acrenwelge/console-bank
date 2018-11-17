@@ -1,4 +1,4 @@
-package com.bank;
+package com.bank.controller;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -9,15 +9,21 @@ import java.util.Scanner;
 import com.bank.model.AccountAction;
 import com.bank.model.AccountType;
 import com.bank.model.Transaction;
+import com.bank.model.User;
 import com.bank.services.TransactionService;
+import com.bank.util.Util;
+import com.bank.view.TransactionView;
 
 public class TransactionController {
-	private static TransactionView view = new TransactionView();
-	private static List<Transaction> transactions = new ArrayList<>();
-	private static Scanner sc = Util.getScanner();
-	private static boolean exit = false;
+	private TransactionView view = new TransactionView();
+	private List<Transaction> transactions = new ArrayList<>();
+	private Scanner sc = Util.getScanner();
+	private boolean exit = false;
 	
-	public static void main(String[] args) {
+	/**
+	 * For admins - to see all transactions
+	 */
+	public void showAllTransactions() {
 		transactions = TransactionService.getAllTransactions();
 		System.out.println("Here are all the transactions:");
 		while (!exit) {
@@ -29,7 +35,22 @@ public class TransactionController {
 		}
 	}
 	
-	public static void getInput() {
+	/**
+	 * For customers - to see only their own transactions
+	 */
+	public void showUserTransactions(User u) {
+		transactions = TransactionService.getTransactionsByUsername(u.getUsername());
+		System.out.println("Here are all your transactions:");
+		while (!exit) {
+			System.out.println(transactions.size() + " transactions found:");
+			System.out.println();
+			view.showTransactions(transactions);
+			view.printMenu();
+			getInput();
+		}
+	}
+	
+	public void getInput() {
 		Integer choice = Integer.parseInt(sc.nextLine());
 		switch(choice) {
 		case 1: determineUserFilter(); break;
@@ -42,17 +63,17 @@ public class TransactionController {
 		}
 	}
 	
-	public static void resetFilters() {
+	public void resetFilters() {
 		transactions = TransactionService.getAllTransactions();
 	}
 	
-	public static void determineUserFilter() {
+	public void determineUserFilter() {
 		System.out.println("Enter the username to filter by:");
 		String username = sc.nextLine();
 		transactions = TransactionService.filterByUser(transactions, username);
 	}
 	
-	public static void determineDateFilter() {
+	public void determineDateFilter() {
 		System.out.println("Enter the date to filter by:");
 		LocalDate date = LocalDate.parse(sc.nextLine());
 		view.printDateOptions();
@@ -63,7 +84,7 @@ public class TransactionController {
 			transactions = TransactionService.filterAfterDate(transactions, date);
 	}
 	
-	public static void determineSizeFilter() {
+	public void determineSizeFilter() {
 		System.out.println("Enter size to filter by:");
 		BigDecimal size = new BigDecimal(sc.nextLine());
 		view.printSizeOptions();
@@ -74,7 +95,7 @@ public class TransactionController {
 			transactions = TransactionService.filterSmallerThan(transactions, size);
 	}
 	
-	public static void determineTransactionTypeFilter() {
+	public void determineTransactionTypeFilter() {
 		view.printTransactionTypeOptions();
 		Integer choice = Integer.parseInt(sc.nextLine());
 		AccountAction type = null;
@@ -86,7 +107,7 @@ public class TransactionController {
 		transactions = TransactionService.filterByTransactionType(transactions, type);
 	}
 	
-	public static void determineAccountTypeFilter() {
+	public void determineAccountTypeFilter() {
 		view.printAccountTypeOptions();
 		Integer choice = Integer.parseInt(sc.nextLine());
 		AccountType type = null;

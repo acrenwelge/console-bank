@@ -1,4 +1,4 @@
-package com.bank;
+package com.bank.view;
 
 import java.util.List;
 
