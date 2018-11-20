@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
+import org.apache.logging.log4j.Logger;
+
 import com.bank.model.AccountAction;
 import com.bank.model.AccountType;
 import com.bank.model.Transaction;
@@ -17,18 +19,25 @@ import com.bank.view.TransactionView;
 public class TransactionController {
 	private TransactionView view = new TransactionView();
 	private List<Transaction> transactions = new ArrayList<>();
-	private Scanner sc = Util.getScanner();
+	private static Scanner sc = Util.getScanner();
+	private static Logger out = Util.getConsoleLogger();
 	private boolean exit = false;
+	
+	private TransactionService tService;
+	
+	public TransactionController(TransactionService ts) {
+		this.tService = ts;
+	}
 	
 	/**
 	 * For admins - to see all transactions
 	 */
 	public void showAllTransactions() {
-		transactions = TransactionService.getAllTransactions();
-		System.out.println("Here are all the transactions:");
+		transactions = tService.getAllTransactions();
+		out.info("Here are all the transactions:");
 		while (!exit) {
-			System.out.println(transactions.size() + " transactions found:");
-			System.out.println();
+			out.info(transactions.size() + " transactions found:");
+			out.info("");
 			view.showTransactions(transactions);
 			view.printMenu();
 			getInput();
@@ -39,11 +48,11 @@ public class TransactionController {
 	 * For customers - to see only their own transactions
 	 */
 	public void showUserTransactions(User u) {
-		transactions = TransactionService.getTransactionsByUsername(u.getUsername());
-		System.out.println("Here are all your transactions:");
+		transactions = tService.getTransactionsByUsername(u.getUsername());
+		out.info("Here are all your transactions:");
 		while (!exit) {
-			System.out.println(transactions.size() + " transactions found:");
-			System.out.println();
+			out.info(transactions.size() + " transactions found:");
+			out.info("");
 			view.showTransactions(transactions);
 			view.printMenu();
 			getInput();
@@ -64,17 +73,17 @@ public class TransactionController {
 	}
 	
 	public void resetFilters() {
-		transactions = TransactionService.getAllTransactions();
+		transactions = tService.getAllTransactions();
 	}
 	
 	public void determineUserFilter() {
-		System.out.println("Enter the username to filter by:");
+		out.info("Enter the username to filter by:");
 		String username = sc.nextLine();
 		transactions = TransactionService.filterByUser(transactions, username);
 	}
 	
 	public void determineDateFilter() {
-		System.out.println("Enter the date to filter by:");
+		out.info("Enter the date to filter by:");
 		LocalDate date = LocalDate.parse(sc.nextLine());
 		view.printDateOptions();
 		Integer choice = Integer.parseInt(sc.nextLine());
@@ -85,7 +94,7 @@ public class TransactionController {
 	}
 	
 	public void determineSizeFilter() {
-		System.out.println("Enter size to filter by:");
+		out.info("Enter size to filter by:");
 		BigDecimal size = new BigDecimal(sc.nextLine());
 		view.printSizeOptions();
 		Integer choice = Integer.parseInt(sc.nextLine());
@@ -97,12 +106,17 @@ public class TransactionController {
 	
 	public void determineTransactionTypeFilter() {
 		view.printTransactionTypeOptions();
-		Integer choice = Integer.parseInt(sc.nextLine());
 		AccountAction type = null;
-		switch (choice) {
-		case 1: type = AccountAction.DEPOSIT; break;
-		case 2: type = AccountAction.WITHDRAW; break;
-		case 3: type = AccountAction.TRANSFER; break;
+		boolean b = true;
+		while(b) {
+			b = false; // exit by default, unless unavailable option selected
+			Integer choice = Integer.parseInt(sc.nextLine());
+			switch (choice) {
+			case 1: type = AccountAction.DEPOSIT; break;
+			case 2: type = AccountAction.WITHDRAW; break;
+			case 3: type = AccountAction.TRANSFER; break;
+			default: b = true; 
+			}
 		}
 		transactions = TransactionService.filterByTransactionType(transactions, type);
 	}
@@ -111,9 +125,14 @@ public class TransactionController {
 		view.printAccountTypeOptions();
 		Integer choice = Integer.parseInt(sc.nextLine());
 		AccountType type = null;
-		switch (choice) {
-		case 1: type = AccountType.CHECKING; break;
-		case 2: type = AccountType.SAVINGS; break;
+		boolean b = true;
+		while(b) {
+			b = false; // exit by default, unless unavailable option selected
+			switch (choice) {
+			case 1: type = AccountType.CHECKING; break;
+			case 2: type = AccountType.SAVINGS; break;
+			default: b = true;
+			}			
 		}
 		transactions = TransactionService.filterByAccountType(transactions, type);
 	}

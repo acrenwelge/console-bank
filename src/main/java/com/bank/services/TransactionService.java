@@ -13,18 +13,23 @@ import com.bank.serialize.GeneralReaderWriter;
 import com.bank.serialize.TransactionReaderWriter;
 
 public class TransactionService {
+	private TransactionReaderWriter trw;
+	
+	public TransactionService(TransactionReaderWriter trw) {
+		this.trw = trw;
+	}
 	
 	// CRUD OPERATIONS
 
-	public static void saveTransaction(Transaction tr) {
-		Util.catchIOExceptionsVoid(() -> TransactionReaderWriter.saveTransaction(tr));
+	public void saveTransaction(Transaction tr) {
+		Util.catchIOExceptionsReturnVoid(() -> trw.saveTransaction(tr));
 	}
 	
-	public static List<Transaction> getAllTransactions() {
+	public List<Transaction> getAllTransactions() {
 		return Util.catchIOExceptionsReturnList(() -> GeneralReaderWriter.getAllObjects(Util.TRANSACTION_DIR));
 	}
 	
-	public static List<Transaction> getTransactionsByUsername(String username) {
+	public List<Transaction> getTransactionsByUsername(String username) {
 		List<Transaction> list = Util.catchIOExceptionsReturnList(() -> GeneralReaderWriter.getAllObjects(Util.TRANSACTION_DIR));
 		return filterByUser(list, username);
 	}

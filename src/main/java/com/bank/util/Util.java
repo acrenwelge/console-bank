@@ -16,7 +16,11 @@ import com.bank.model.MessageHolder;
 public class Util {
 	private static ClassLoader cl = Thread.currentThread().getContextClassLoader();
 	private static Scanner sc = new Scanner(System.in);
+	private static Logger out = Util.getConsoleLogger();
+	
 	public static final String TRANSACTION_DIR = "Transactions/";
+	public static final String CONSOLE_LOGGER = "STDLOGGER";
+	public static final String ERR_LOGGER = "STDERR";
 	
 	public ClassLoader getClassLoader() {
 		return cl;
@@ -26,8 +30,12 @@ public class Util {
 		return sc;
 	}
 	
-	public static Logger getLogger() {
+	public static Logger getFileLogger() {
 		return LogManager.getLogger(com.bank.App.class);
+	}
+	
+	public static Logger getConsoleLogger() {
+		return LogManager.getLogger(CONSOLE_LOGGER);
 	}
 	
 	// Interfaces and generic methods for centralizing catching/handling IOExceptions
@@ -40,29 +48,43 @@ public class Util {
 		public List<T> doSomethingAndReturnList() throws IOException;
 	}
 	
+	public interface MethodReturningBoolean {
+		public boolean doSomethingAndReturnBool() throws IOException;
+	}
+	
 	public interface MethodReturningType<T> {
 		public T doSomethingAndReturnType() throws IOException;
 	}
 	
-	public static void catchIOExceptionsVoid(NoReturnMethod m) {
+	public static void catchIOExceptionsReturnVoid(NoReturnMethod m) {
 		try {
 			m.doSomething();
 		} catch (IOException e) {
-			getLogger().error(MessageHolder.exceptionLogMsg, e);
-			System.err.println(MessageHolder.ioMessage);
+			getFileLogger().error(MessageHolder.exceptionLogMsg, e);
+			out.error(MessageHolder.ioMessage);
 		}
+	}
+	
+	public static boolean catchIOExceptionsReturnBool(MethodReturningBoolean m) {
+		try {
+			return m.doSomethingAndReturnBool();
+		} catch (IOException e) {
+			getFileLogger().error(MessageHolder.exceptionLogMsg, e);
+			out.error(MessageHolder.ioMessage);
+		}
+		return false;
 	}
 	
 	public static <T> List<T> catchIOExceptionsReturnList(MethodReturningList<T> m) {
 		try {
 			return m.doSomethingAndReturnList();
 		} catch (FileNotFoundException fnfe) {
-			getLogger().error(MessageHolder.actNotFound);
+			getFileLogger().error(MessageHolder.actNotFound);
 		} catch (IOException e) {
-			getLogger().error(MessageHolder.exceptionLogMsg, e);
-			System.err.println(MessageHolder.ioMessage);
+			getFileLogger().error(MessageHolder.exceptionLogMsg, e);
+			out.error(MessageHolder.ioMessage);
 		}
-		return new ArrayList<T>();
+		return new ArrayList<>();
 	}
 	
 	/**
@@ -75,10 +97,10 @@ public class Util {
 		try {
 			return m.doSomethingAndReturnType();
 		} catch (FileNotFoundException fnfe) {
-			getLogger().error(MessageHolder.actNotFound);
+			getFileLogger().error(MessageHolder.actNotFound);
 		} catch (IOException e) {
-			getLogger().error(MessageHolder.exceptionLogMsg, e);
-			System.err.println(MessageHolder.ioMessage);
+			getFileLogger().error(MessageHolder.exceptionLogMsg, e);
+			out.error(MessageHolder.ioMessage);
 		}
 		return null;
 	}

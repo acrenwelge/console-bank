@@ -1,6 +1,5 @@
 package com.bank;
 
-import java.io.IOException;
 import java.time.LocalDate;
 import java.util.Scanner;
 
@@ -12,116 +11,123 @@ import com.bank.model.Admin;
 import com.bank.model.Customer;
 import com.bank.model.CustomerStatus;
 import com.bank.model.MessageHolder;
-import com.bank.serialize.CustomerReaderWriter;
 import com.bank.services.AdminService;
 import com.bank.services.CustomerService;
 import com.bank.util.InputUtil;
 import com.bank.util.Util;
 
 public class App {
-	private boolean doNotExit = true;
-	private Scanner sc = Util.getScanner();
-	private Logger log = Util.getLogger();
+	private boolean exit = false;
+	private static Scanner sc = Util.getScanner();
+	private static Logger log = Util.getFileLogger();
+	private static Logger out = Util.getConsoleLogger();
+	private Customer cust;
+	private Admin admin;
+	private CustomerHomeController chc;
+	private AdminHomeController ahc;
+	private AdminService aService;
+	private CustomerService custService;
 	
-    public static void main( String[] args )
-    {
-    	new App().initialize();
+	public App(CustomerHomeController chc, AdminHomeController ahc, AdminService aService, CustomerService custService) {
+		this.chc = chc;
+		this.ahc = ahc;
+		this.aService = aService;
+		this.custService = custService;
+	}
+	
+    public static void main( String[] args ) {
+    	out.info("Hello and welcome to CONSOLE BANK");
+    	App a = AppFactory.getApp();
+    	while (!a.exit) {
+    		a.showMainMenu();
+    	}
     }
     
-    public void initialize() {
-    	System.out.println("Hello and welcome to CONSOLE BANK!");
-    	do {
-    		System.out.println("Please choose to login, register, or exit the bank:");
-        	System.out.println(" 1 - login as customer");
-        	System.out.println(" 2 - login as admin");
-        	System.out.println(" 3 - register as customer");
-        	System.out.println(" 4 - register as admin");
-        	System.out.println(" 5 - exit");
-        	int i = InputUtil.getInteger();
-    		switch(i) {
-    			case 1: customerLogin(); break;
-    			case 2: adminLogin(); break;
-    			case 3: customerRegister(); break;
-    			case 4: adminRegister(); break;
-    			case 5: exit(); break;
-    			default: continue;
-    		}
-    	} while (doNotExit);
+    public void showMainMenu() {
+		out.info("Please choose to login, register, or exit the bank:");
+    	out.info(" 1 - login as customer");
+    	out.info(" 2 - login as admin");
+    	out.info(" 3 - register as customer");
+    	out.info(" 4 - register as admin");
+    	out.info(" 5 - exit");
+    	int i = InputUtil.getInteger();
+		switch(i) {
+			case 1: customerLogin(); break;
+			case 2: adminLogin(); break;
+			case 3: customerRegister(); break;
+			case 4: adminRegister(); break;
+			case 5: exit(); break;
+			default: break;
+		}
     }
     
     public void customerLogin() {
-    	Customer c = new Customer();
-    	boolean exit = false;
-    	while(!exit) {
-    		exit = true;
-			System.out.println();
-	    	System.out.println("Please enter your username: ");
+    	boolean localExit = false;
+    	while(!localExit) {
+    		localExit = true;
+			out.info("");
+	    	out.info("Please enter your username: ");
 	    	String uname = sc.nextLine();
-	    	System.out.println("Please enter your password: ");
+	    	out.info("Please enter your password: ");
 	    	String pword = sc.nextLine();
-	    	c = CustomerService.getCustomerByUsername(uname);
-	    	if (c == null)
-	    		System.err.println(MessageHolder.invalidCredentials);
-	    	else if (c.getPassword().equals(pword)) {
-	    		System.out.println("Login successful!");
-	    		log.info("Customer {} logged in successfully", c.getUsername());
+	    	cust = custService.getCustomerByUsername(uname);
+	    	if (cust == null)
+	    		out.error(MessageHolder.invalidCredentials);
+	    	else if (cust.getPassword().equals(pword)) {
+	    		out.info("Login successful!");
+	    		log.info("Customer {} logged in successfully", cust.getUsername());
 	    	} else {
-	    		log.error("Invalid credentials for user: " + c.getUsername());
-	    		System.err.println(MessageHolder.invalidCredentials);
-	    		exit = false;
+	    		log.error("Invalid credentials for user: " + cust.getUsername());
+	    		out.error(MessageHolder.invalidCredentials);
+	    		localExit = false;
 	    	}
     	}
-    	if (c.getCustStatus() != null && c.getCustStatus().equals(CustomerStatus.SUSPENDED))
-    		System.out.println("Sorry, your user account has been suspended - please contact an administrator to reactivate your account");
-    	else
-    		new CustomerHomeController(c).displayHomepage();
+    	if (cust.getCustStatus() != null && cust.getCustStatus().equals(CustomerStatus.SUSPENDED))
+    		out.info("Sorry, your user account has been suspended - please contact an administrator to reactivate your account");
+    	else {
+    		chc.setCustomer(cust);
+    		chc.displayHomepage();
+    	}
     }
     
     public void adminLogin() {
-    	Admin a = new Admin();
-    	boolean exit = false;
-    	while (!exit) {
-    		System.out.println();
-        	System.out.println("Please enter your username: ");
+    	boolean localExit = false;
+    	while (!localExit) {
+    		out.info("");
+        	out.info("Please enter your username: ");
         	String uname = sc.nextLine();
-        	System.out.println("Please enter your password: ");
+        	out.info("Please enter your password: ");
         	String pword = sc.nextLine();
-        	a = AdminService.getAdminByUsername(uname);
-        	if (a == null)
-    			System.err.println(MessageHolder.invalidCredentials);
-        	else if (a.getPassword().equals(pword)) {
-    			exit = true;
-        		System.out.println("Login successful!");
-        		log.info("Admin {} logged in successfully", a.getUsername());
+        	admin = aService.getAdminByUsername(uname);
+        	if (admin == null)
+    		    out.error(MessageHolder.invalidCredentials);
+        	else if (admin.getPassword().equals(pword)) {
+    			localExit = true;
+        		out.info("Login successful!");
+        		log.info("Admin {} logged in successfully", admin.getUsername());
         	} else {
-        		System.err.println(MessageHolder.invalidCredentials);
+        		out.error(MessageHolder.invalidCredentials);
         	}
     	}
-    	new AdminHomeController(a).init();
+    	ahc.setAdmin(admin);
+    	ahc.init();
     }
     
     public void adminRegister() {
     	Admin newAdmin = new Admin();
-    	System.out.println("What's your first name?");
+    	out.info("What's your first name?");
     	String fname = sc.nextLine();
     	newAdmin.setFirstName(fname);
-    	System.out.println("What's your last name?");
+    	out.info("What's your last name?");
     	String lname = sc.nextLine();
     	newAdmin.setLastName(lname);
-    	System.out.println("Now choose a username:");
+    	out.info("Now choose a username:");
     	while (true) {
         	String uname = sc.nextLine();
         	boolean alreadyExists = true;
-			try {
-				alreadyExists = CustomerReaderWriter.checkNewUsername(uname);
-			} catch (IOException e) {
-				System.err.println(MessageHolder.ioMessage);
-				log.error(MessageHolder.exceptionLogMsg, e);
-				System.out.println("Let's try again.. please re-enter the username");
-				continue;
-			}
+			alreadyExists = custService.checkIfUsernameExists(uname);
         	if (alreadyExists)
-        		System.err.println("Sorry, that username already exists. Choose a different one:");
+        		out.error("Sorry, that username already exists. Choose a different one:");
         	else {
         		newAdmin.setUsername(uname);
         		break;
@@ -129,77 +135,69 @@ public class App {
     	}
     	String pword = getPasswordForRegistration();
     	newAdmin.setPassword(pword);
-		AdminService.registerAdmin(newAdmin);
+		aService.registerAdmin(newAdmin);
     }
     
     public void customerRegister() {
-    	Customer c = new Customer();
-    	c.setCustomerSince(LocalDate.now());
-    	System.out.println("Thanks for choosing CONSOLE BANK! Let's get some information to get started:");
-    	System.out.println("What's your first name?");
+    	cust.setCustomerSince(LocalDate.now());
+    	out.info("Thanks for choosing CONSOLE BANK! Let's get some information to get started:");
+    	out.info("What's your first name?");
     	String fname = sc.nextLine();
-    	c.setFirstName(fname);
-    	System.out.println("What's your last name?");
+    	cust.setFirstName(fname);
+    	out.info("What's your last name?");
     	String lname = sc.nextLine();
-    	c.setLastName(lname);
-    	System.out.println("Now choose a username:");
+    	cust.setLastName(lname);
+    	out.info("Now choose a username:");
     	while (true) {
         	String uname = sc.nextLine();
         	boolean alreadyExists = true;
-			try {
-				alreadyExists = CustomerReaderWriter.checkNewUsername(uname);
-			} catch (IOException e) {
-				System.err.println(MessageHolder.ioMessage);
-				log.error("Exception thrown: ",e);
-				System.out.println("Let's try again.. please re-enter the username");
-				continue;
-			}
+			alreadyExists = custService.checkIfUsernameExists(uname);
         	if (alreadyExists) {
-        		System.err.println(MessageHolder.usernameExists);
+        		out.error(MessageHolder.usernameExists);
         		log.error("Username {} already exists", uname);
         	}
         	else {
-        		c.setUsername(uname);
+        		cust.setUsername(uname);
         		break;
         	}
     	}
     	String pword = getPasswordForRegistration();
-    	c.setPassword(pword);
-		System.out.println("What's your date of birth (format: YYYY-MM-DD)?");
+    	cust.setPassword(pword);
+		out.info("What's your date of birth (format: YYYY-MM-DD)?");
 		LocalDate dob = InputUtil.getDateFromUser();
-		c.setDob(dob);
-    	System.out.println("What's your mailing address?");
+		cust.setDob(dob);
+    	out.info("What's your mailing address?");
     	String address = sc.nextLine();
-    	c.setAddress(address);
-    	System.out.println("What's your email address?");
+    	cust.setAddress(address);
+    	out.info("What's your email address?");
     	String email = sc.nextLine();
-    	c.setEmail(email);
-    	System.out.println("What's your phone number?");
+    	cust.setEmail(email);
+    	out.info("What's your phone number?");
     	String num = sc.nextLine();
-    	c.setPhoneNumber(num);
-    	System.out.println("Thanks! Let's get you registered...");
-    	c.setCustStatus(CustomerStatus.ACTIVE);
-    	CustomerService.registerCustomer(c);
-    	System.out.println("Now, you can login with your username / password");
+    	cust.setPhoneNumber(num);
+    	out.info("Thanks! Let's get you registered...");
+    	cust.setCustStatus(CustomerStatus.ACTIVE);
+    	custService.registerCustomer(cust);
+    	out.info("Now, you can login with your username / password");
     	customerLogin();
     }
     
     public String getPasswordForRegistration() {
-    	System.out.println("Great! Now set a password for your account:");
+    	out.info("Great! Now set a password for your account:");
     	while (true) {
     		String pword = sc.nextLine();
-        	System.out.println("Confirm the password by entering it again:");
+        	out.info("Confirm the password by entering it again:");
         	String pword2 = sc.nextLine();
         	if (pword.equals(pword2)) {
         		return pword;
         	} else {
-        		System.err.println("Passwords don't match - try again");
+        		out.error("Passwords don't match - try again");
         	}
     	}
     }
     
     public void exit() {
-    	System.out.println("Goodbye! Please come back and see us soon");
-    	doNotExit = false;
+    	out.info("Goodbye! Please come back and see us soon");
+    	exit = true;
     }
 }

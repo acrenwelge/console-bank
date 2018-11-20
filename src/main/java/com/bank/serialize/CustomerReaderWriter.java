@@ -16,13 +16,22 @@ import java.nio.file.Paths;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
+import org.apache.logging.log4j.Logger;
+
 import com.bank.model.Customer;
+import com.bank.model.MessageHolder;
+import com.bank.util.Util;
 
 public class CustomerReaderWriter {
+	private static Logger out = Util.getConsoleLogger();
+	private static Logger log = Util.getFileLogger();
 	
-	public static boolean checkNewUsername(String username) throws IOException {
-		Predicate<Path> checkPath = path -> path.getFileName().toString().equals(username+".dat");
-		File f = new File("Customers/");
+	private static final String CUST_DIR = "Customers/";
+	private static final String FILE_EXT = ".dat";
+	
+	public boolean checkNewUsername(String username) throws IOException {
+		Predicate<Path> checkPath = path -> path.getFileName().toString().equals(username+FILE_EXT);
+		File f = new File(CUST_DIR);
 		if (!f.exists()) f.mkdir();
 		try (Stream<Path> paths = Files.walk(Paths.get(f.getAbsolutePath()))) {
 		    return paths
@@ -31,15 +40,16 @@ public class CustomerReaderWriter {
 		}
 	}
 	
-	public static void saveCustomer(Customer cust) throws IOException {
-		File custFile = new File("Customers/"+cust.getUsername()+".dat");
-		custFile.createNewFile(); // create the file if it doesn't already exist
+	public void saveCustomer(Customer cust) throws IOException {
+		File custFile = new File(CUST_DIR+cust.getUsername()+FILE_EXT);
+		if (custFile.createNewFile()) // create the file if it doesn't already exist
+			log.info("File "+custFile.getAbsolutePath() + " created");
 		try(ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(custFile))) {
 			oos.writeObject(cust);
 		}
 	}
 	
-	public static void registerNewCustomer(Customer cust) throws IOException {
+	public void registerNewCustomer(Customer cust) throws IOException {
 		File f = new File("maxuserid.txt"); // file that stores the current max id
 		int currentMax = 0; // will update this later on
 		if (f.exists()) {
@@ -47,7 +57,7 @@ public class CustomerReaderWriter {
 				currentMax = Integer.parseInt(br.readLine());
 				cust.setId(++currentMax); // increment and set new customer id
 				saveCustomer(cust);
-				System.out.println("Congrats! You were successfully registered!");
+				out.info("Congrats! You were successfully registered!");
 			}
 		}
 		else { // handle case of 1st customer
@@ -57,16 +67,16 @@ public class CustomerReaderWriter {
 		// in either case, write the new max to the file
 		try (BufferedWriter bw = new BufferedWriter(new FileWriter(f))) {
 			bw.write(String.valueOf(cust.getId())); // must write as a string
-			System.out.println(f.getName()+" successfully updated");
+			out.info(f.getName()+" successfully updated");
 		}
 	}
 	
-	public static Customer getCustomerByUsername(String username) throws IOException {
-		try(ObjectInputStream ois = new ObjectInputStream(new FileInputStream("Customers/"+username+".dat"))) {
+	public Customer getCustomerByUsername(String username) throws IOException {
+		try(ObjectInputStream ois = new ObjectInputStream(new FileInputStream(CUST_DIR+username+FILE_EXT))) {
 			return (Customer) ois.readObject();
 		} catch (ClassNotFoundException | ClassCastException e) {
-			System.err.println("Something went wrong while reading customer from file");
-			e.printStackTrace();
+			log.error("Something went wrong while reading customer from file");
+			log.error(MessageHolder.exceptionLogMsg, e);
 			return null;
 		}
 	}

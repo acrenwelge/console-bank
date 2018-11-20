@@ -8,7 +8,15 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.apache.logging.log4j.Logger;
+
+import com.bank.model.MessageHolder;
+import com.bank.util.Util;
+
 public class GeneralReaderWriter {
+	private GeneralReaderWriter() {}
+	
+	private static Logger log = Util.getFileLogger();
 	
 	/**
 	 * Returns a typed List of all Objects read from the directory passed as a parameter.
@@ -26,7 +34,7 @@ public class GeneralReaderWriter {
 					T typedObj = (T) ois.readObject();
 					linked.add(typedObj);
 				} catch (ClassNotFoundException | IOException e) {
-					e.printStackTrace();
+					log.error(MessageHolder.exceptionLogMsg, e);
 				}
 			}
 		}

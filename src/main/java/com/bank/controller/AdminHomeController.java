@@ -8,7 +8,6 @@ import java.util.Scanner;
 
 import org.apache.logging.log4j.Logger;
 
-import com.bank.controller.CustomerHomeController;
 import com.bank.model.Account;
 import com.bank.model.AccountStatus;
 import com.bank.model.Admin;
@@ -24,24 +23,42 @@ import com.bank.util.Util;
 import com.bank.view.AdminHomeView;
 
 public class AdminHomeController {
-	private Scanner sc = Util.getScanner();
-	private Logger log = Util.getLogger();
+	private static Scanner sc = Util.getScanner();
+	private static Logger log = Util.getFileLogger();
+	private static Logger out = Util.getConsoleLogger();
 	private boolean doNotLogout = true;
 	
 	private Admin admin;
-	private AdminHomeView ahv = new AdminHomeView();
-	private TransactionController tc = new TransactionController();
+	private AdminHomeView ahv;
+	private TransactionController tc;
+	private CustomerHomeController chc;
+	private AccountService actService;
+	private CustomerService custService;
+	private TransactionService tService;
+	private InputUtil iUtil;
 	
-	public AdminHomeController(Admin admin) {
+	public AdminHomeController(Admin admin, TransactionController tc, CustomerHomeController chc, 
+			AccountService as, CustomerService cs, AdminHomeView ahv, InputUtil iUtil, TransactionService ts) {
+		this.admin = admin;
+		this.tc = tc;
+		this.actService = as;
+		this.custService = cs;
+		this.ahv = ahv;
+		this.chc = chc;
+		this.iUtil = iUtil;
+		this.tService = ts;
+	}
+	
+	public void setAdmin(Admin admin) {
 		this.admin = admin;
 	}
 	
 	public void init() {
-		System.out.println("Welcome, " + admin.getFirstName());
+		out.info("Welcome, " + admin.getFirstName());
 		viewPendingAccounts();
 		do {
 			doNotLogout = true;
-			int choice = ahv.displayMenu(admin);
+			int choice = ahv.displayMenu();
 			switch(choice) {
 			case 1: reviewAllPendingAccounts(); break;
 			case 2: viewAllAccounts(); break;
@@ -49,28 +66,28 @@ public class AdminHomeController {
 			case 4: viewCustomerDialog(); break;
 			case 5: initTransferDialog(); break;
 			case 6: logout(); break;
-			default: System.out.println("Please choose an option from the menu"); break;
+			default: out.info("Please choose an option from the menu"); break;
 			}
 		} while (doNotLogout);
 	}
 	
 	public void viewPendingAccounts() {
-		List<Account> allPending = AccountService.getAllAccountsByStatus(AccountStatus.UNAPPROVED);
+		List<Account> allPending = actService.getAllAccountsByStatus(AccountStatus.UNAPPROVED);
 		ahv.showPendingAccounts(allPending);
 	}
 	
 	public void viewAllAccounts() {
-		ahv.viewAllAccounts(AccountService.getAllAccounts());
+		ahv.viewAllAccounts(actService.getAllAccounts());
 	}
 	
 	public void reviewAllPendingAccounts() {
-		List<Account> allPending = AccountService.getAllAccountsByStatus(AccountStatus.UNAPPROVED);
-		if (allPending.isEmpty()) System.out.println("No accounts currently pending approval");
+		List<Account> allPending = actService.getAllAccountsByStatus(AccountStatus.UNAPPROVED);
+		if (allPending.isEmpty()) out.info("No accounts currently pending approval");
 		else {
-			System.out.println("Would you like to mass-approve all pending, unapproved accounts? (y/n)");
+			out.info("Would you like to mass-approve all pending, unapproved accounts? (y/n)");
 			String choice = sc.nextLine();
 			if (choice.equals("y") || choice.equals("yes")) {
-				AccountService.approveAccounts(allPending);
+				actService.approveAccounts(allPending);
 			}
 			else if (choice.equals("n") || choice.equals("no")) {
 				reviewIndividualPendingAccounts(allPending);
@@ -80,8 +97,8 @@ public class AdminHomeController {
 	
 	public void reviewIndividualPendingAccounts(List<Account> allPending) {
 		for (Account a : allPending) {
-			System.out.println("Account #" + a.getId() + ": " + a);
-			System.out.println("Approve this account? (y/n)");
+			out.info("Account #" + a.getId() + ": " + a);
+			out.info("Approve this account? (y/n)");
 			String s = "";
 			boolean yes = false;
 			boolean no = false;
@@ -90,17 +107,17 @@ public class AdminHomeController {
 				yes = s.equals("yes") || s.equals("y");
 				no  = s.equals("no")  || s.equals("n");
 				if (yes) {
-					AccountService.approveAccount(a);
+					actService.approveAccount(a);
 				} else if (no) {
 					String c = "";
 					while (!(c.equals("no") || c.equals("n") || c.equals("y") || c.equals("yes"))) {
-						System.out.println("Do you want to suspend the account?");
+						out.info("Do you want to suspend the account?");
 						c = sc.nextLine();
 						if (c.equals("y") || c.equals("yes"))
-							AccountService.suspendAccount(a);
+							actService.suspendAccount(a);
 					}
 				} else {
-					System.err.println("Please enter yes or no (y/n)");
+					out.error("Please enter yes or no (y/n)");
 				}
 			}
 		}
@@ -110,15 +127,14 @@ public class AdminHomeController {
 		boolean exit = false;
 		while(!exit) {
 			exit = true;
-			Customer cust = InputUtil.getCustomerFromUser("Which customer would you like to view details for? Please enter customer username");
-			CustomerHomeController chc = new CustomerHomeController(cust);
+			Customer cust = iUtil.getCustomerFromUser("Which customer would you like to view details for? Please enter customer username");
 			int choice = ahv.displayCustomerDialogMenu(cust);
 			switch(choice) {
 			case 1: chc.editUserInfo(); break;
 			case 2: approveCustomerAccounts(cust); break;
 			case 3: chc.viewAccountDetailsDialog(); break;
-			case 4: CustomerService.suspendCustomer(cust); break;
-			case 5: CustomerService.reauthorizeCustomer(cust); break;
+			case 4: custService.suspendCustomer(cust); break;
+			case 5: custService.reauthorizeCustomer(cust); break;
 			case 6: exit = false; break;
 			case 7: break;
 			default: exit = false; break;
@@ -129,33 +145,33 @@ public class AdminHomeController {
 	public void approveCustomerAccounts(Customer c) {
 		List<Account> customerPendingAccounts = new ArrayList<>();
 		c.getAccounts().forEach((Integer id) -> {
-			Account acct = AccountService.getAccountById(id);
+			Account acct = actService.getAccountById(id);
 			if (acct.getAcctStatus().equals(AccountStatus.UNAPPROVED))
 				customerPendingAccounts.add(acct);
 		});
 		if (customerPendingAccounts.isEmpty())
-			System.out.println("Customer has no pending accounts");
+			out.info("Customer has no pending accounts");
 		else
 			reviewIndividualPendingAccounts(customerPendingAccounts);
 	}
 	
 	public void initTransferDialog() {
-		Account from = InputUtil.getAccountFromUser("Which account would you like to transfer funds TO?");
-		Account to = InputUtil.getAccountFromUser("Which account would you like to transfer funds TO?");
+		Account from = iUtil.getAccountFromUser("Which account would you like to transfer funds TO?");
+		Account to = iUtil.getAccountFromUser("Which account would you like to transfer funds TO?");
 		BigDecimal amt = InputUtil.getAmountFromUser("How much would you like to transfer?");
 		try {
-			AccountService.transferFunds(from, to, amt);
+			actService.transferFunds(from, to, amt);
 			Transaction tr = new Transaction(LocalDateTime.now(), amt, admin, from, to);
-			TransactionService.saveTransaction(tr);
+			tService.saveTransaction(tr);
 			log.info(tr);
 		} catch (BankException e) {
 			log.error(MessageHolder.exceptionLogMsg, e);
-			System.err.println(e.getMessage());
+			out.error(e.getMessage());
 		}
 	}
 	
 	public void logout() {
-		System.out.println("Logging out now...");
+		out.info("Logging out now...");
 		log.info("Admin " + admin.getUsername() + " logged out");
 		doNotLogout = false;
 	}

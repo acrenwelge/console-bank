@@ -7,19 +7,23 @@ import com.bank.model.Admin;
 import com.bank.serialize.AdminReaderWriter;
 
 public class AdminService {
-	private AdminService() {}
-	private static Logger log = Util.getLogger();
+	private static Logger log = Util.getFileLogger();
+	private AdminReaderWriter arw;
+	
+	public AdminService(AdminReaderWriter arw) {
+		this.arw = arw;
+	}
 
-	public static Admin getAdminByUsername(String username) {
-		return Util.catchIOExceptionsReturnType(() -> AdminReaderWriter.getAdminByUsername(username));
+	public Admin getAdminByUsername(String username) {
+		return Util.catchIOExceptionsReturnType(() -> arw.getAdminByUsername(username));
 	}
 	
-	public static void saveAdmin(Admin a) {
-		Util.catchIOExceptionsVoid(() -> AdminReaderWriter.saveAdmin(a));
+	public void saveAdmin(Admin a) {
+		Util.catchIOExceptionsReturnVoid(() -> arw.saveAdmin(a));
 	}
 	
-	public static void registerAdmin(Admin ad) {
-		Util.catchIOExceptionsVoid(() -> AdminReaderWriter.registerNewAdmin(ad));
+	public void registerAdmin(Admin ad) {
+		Util.catchIOExceptionsReturnVoid(() -> arw.registerNewAdmin(ad));
 		log.info("Admin " + ad.getUsername() + " registered");
 	}
 	

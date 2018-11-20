@@ -8,7 +8,6 @@ import java.util.List;
 
 import org.apache.logging.log4j.Logger;
 
-import com.bank.util.Util;
 import com.bank.model.Account;
 import com.bank.model.AccountAction;
 import com.bank.model.AccountStatus;
@@ -19,36 +18,44 @@ import com.bank.model.exception.IllegalDepositException;
 import com.bank.model.exception.IllegalWithdrawalException;
 import com.bank.model.exception.OverdraftException;
 import com.bank.serialize.AccountReaderWriter;
+import com.bank.util.Util;
 
 public class AccountService {
-	private static Logger log = Util.getLogger();
+	private static Logger log = Util.getFileLogger();
+	private static Logger out = Util.getConsoleLogger();
 	private static final int LOW_BAL_WARN = 100;
-	private AccountService() {}
+	private static final String ACT_PREFIX = "Account #";
+	private AccountReaderWriter arw;
+	
+	public AccountService(AccountReaderWriter arw) {
+		this.arw = arw;
+	}
+	
 	
 	// Retrieving accounts
 	
-	public static List<Account> getAllAccounts() {
+	public List<Account> getAllAccounts() {
 		log.info("Retrieving all accounts");
 		try {
-			return AccountReaderWriter.getAllAccounts();
+			return arw.getAllAccounts();
 		} catch (IOException e) {
 			log.error(MessageHolder.exceptionLogMsg, e);
-			System.err.println(MessageHolder.ioMessage);
+			out.error(MessageHolder.ioMessage);
 			return new ArrayList<>();
 		}
 	}
 	
-	public static List<Account> getAllAccountsByStatus(AccountStatus as) {
-		return Util.catchIOExceptionsReturnList(() -> AccountReaderWriter.getAllAccountsByStatus(as));
+	public List<Account> getAllAccountsByStatus(AccountStatus as) {
+		return Util.catchIOExceptionsReturnList(() -> arw.getAllAccountsByStatus(as));
 	}
 	
-	public static Account getAccountById(int id) {
-		return Util.catchIOExceptionsReturnType(() -> AccountReaderWriter.getAccountById(id));
+	public Account getAccountById(int id) {
+		return Util.catchIOExceptionsReturnType(() -> arw.getAccountById(id));
 	}
 	
 	// Transaction methods
 	
-	public static void depositMoney(BigDecimal deposit, Account acct) throws IllegalDepositException {
+	public void depositMoney(BigDecimal deposit, Account acct) throws IllegalDepositException {
 		if (deposit.compareTo(BigDecimal.ZERO) < 0)
 			throw new IllegalDepositException("Cannot deposit a negative amount");
 		acct.setBalance(acct.getBalance().add(deposit));
@@ -56,7 +63,7 @@ public class AccountService {
 		log.info(MessageHolder.getTransactionMsg(acct, deposit, AccountAction.DEPOSIT));
 	}
 	
-	public static void withdrawMoney(BigDecimal amount, Account acct) throws OverdraftException, IllegalWithdrawalException {
+	public void withdrawMoney(BigDecimal amount, Account acct) throws OverdraftException, IllegalWithdrawalException {
 		if (amount.doubleValue() > acct.getBalance().doubleValue())
 			throw new OverdraftException("Overdraft error - you can't withdraw that much");
 		else if (amount.doubleValue() < 0)
@@ -66,21 +73,21 @@ public class AccountService {
 			saveAccount(acct);
 			log.info(MessageHolder.getTransactionMsg(acct, amount, AccountAction.WITHDRAW));
 			if (acct.getBalance().compareTo(new BigDecimal(LOW_BAL_WARN)) < 0) {
-				String s = "Account #"+acct.getId()+ " has a low balance of " + acct.getCurrency().getSymbol()+ acct.getBalance(); 
+				String s = ACT_PREFIX+acct.getId()+ " has a low balance of " + acct.getCurrency().getSymbol()+ acct.getBalance(); 
 				log.warn(s);
-				System.err.println("WARNING: "+s);
+				out.error("WARNING: "+s);
 			}
 		}
 	}
 	
-	public static void transferFunds(Account from, Account to, BigDecimal amount) throws BankException {
+	public void transferFunds(Account from, Account to, BigDecimal amount) throws BankException {
 		if (from.getCurrency().equals(to.getCurrency())) {
 			withdrawMoney(amount, from);
 			depositMoney(amount, to);
 			saveAccount(from);
 			saveAccount(to);
-			System.out.println("Account #"+from.getId() + " new balance: "+from.getCurrency().getSymbol() + from.getBalance());
-			System.out.println("Account #"+to.getId() + " new balance: " +to.getCurrency().getSymbol()+ to.getBalance());
+			out.info(ACT_PREFIX+from.getId() + " new balance: "+from.getCurrency().getSymbol() + from.getBalance());
+			out.info(ACT_PREFIX+to.getId() + " new balance: " +to.getCurrency().getSymbol()+ to.getBalance());
 			log.info("Funds transferred from Account #" + from.getId()
 				+ " to Account #" + to.getId()
 				+ " - amount: " + from.getCurrency().getSymbol()+ amount);
@@ -89,12 +96,12 @@ public class AccountService {
 		}
 	}
 	
-	public static void saveAccount(Account acct) {
-		Util.catchIOExceptionsVoid(() -> AccountReaderWriter.saveAccount(acct));		
+	public void saveAccount(Account acct) {
+		Util.catchIOExceptionsReturnVoid(() -> arw.saveAccount(acct));		
 	}
 	
-	public static void registerNewAccount(Customer cust, Account acct) {
-		Util.catchIOExceptionsVoid(() -> AccountReaderWriter.registerNewAccount(cust, acct));
+	public void registerNewAccount(Customer cust, Account acct) {
+		Util.catchIOExceptionsReturnVoid(() -> arw.registerNewAccount(cust, acct));
 	}
 	
 	/**
@@ -102,11 +109,11 @@ public class AccountService {
 	 * @param accts
 	 * @throws IOException
 	 */
-	public static void approveAccount(Account acct) {
+	public void approveAccount(Account acct) {
 		if (acct.getAcctStatus().equals(AccountStatus.UNAPPROVED)) {
 			acct.setAcctStatus(AccountStatus.ACTIVE);
 			saveAccount(acct);
-			log.info("Account #" + acct.getId() + " approved");
+			log.info(ACT_PREFIX + acct.getId() + " approved");
 		}
 		else
 			throw new UnsupportedOperationException("Account must be unapproved in order to approve and change status to active");
@@ -117,7 +124,7 @@ public class AccountService {
 	 * @param accts
 	 * @throws IOException
 	 */
-	public static void approveAccounts(Collection<Account> accts) {
+	public void approveAccounts(Collection<Account> accts) {
 		for (Account acct : accts) {
 			approveAccount(acct);
 		}
@@ -128,10 +135,10 @@ public class AccountService {
 	 * @param acct
 	 * @throws IOException
 	 */
-	public static void deactivateAccount(Account acct) {
+	public void deactivateAccount(Account acct) {
 		acct.setAcctStatus(AccountStatus.INACTIVE);
 		saveAccount(acct);
-		log.info("Account #" + acct.getId() + " deactivated");
+		log.info(ACT_PREFIX + acct.getId() + " deactivated");
 	}
 	
 	/**
@@ -139,7 +146,7 @@ public class AccountService {
 	 * @param accts
 	 * @throws IOException
 	 */
-	public static void deactivateAccounts(Collection<Account> accts) {
+	public void deactivateAccounts(Collection<Account> accts) {
 		for (Account acct : accts) {
 			deactivateAccount(acct);
 		}
@@ -150,10 +157,10 @@ public class AccountService {
 	 * @param acct
 	 * @throws IOException
 	 */
-	public static void suspendAccount(Account acct) {
+	public void suspendAccount(Account acct) {
 		acct.setAcctStatus(AccountStatus.SUSPENDED);
 		saveAccount(acct);
-		log.info("Account #"+acct.getId() + " suspended");
+		log.info(ACT_PREFIX+acct.getId() + " suspended");
 	}
 	
 	/**
@@ -161,7 +168,7 @@ public class AccountService {
 	 * @param accts
 	 * @throws IOException
 	 */
-	public static void suspendAccounts(Collection<Account> accts) {
+	public void suspendAccounts(Collection<Account> accts) {
 		for (Account acct : accts) {
 			suspendAccount(acct);
 		}
@@ -173,10 +180,10 @@ public class AccountService {
 	 * @param acct
 	 * @throws IOException
 	 */
-	public static void closeAccount(Account acct) {
+	public void closeAccount(Account acct) {
 		acct.setAcctStatus(AccountStatus.CLOSED);
 		saveAccount(acct);
-		log.info("Account #"+acct.getId() + " closed");
+		log.info(ACT_PREFIX+acct.getId() + " closed");
 	}
 	
 	/**
@@ -184,7 +191,7 @@ public class AccountService {
 	 * @param accts
 	 * @throws IOException
 	 */
-	public static void closeAccounts(Collection<Account> accts) {
+	public void closeAccounts(Collection<Account> accts) {
 		for (Account acct : accts) {
 			closeAccount(acct);
 		}

@@ -8,31 +8,40 @@ import com.bank.model.CustomerStatus;
 import com.bank.serialize.CustomerReaderWriter;
 
 public class CustomerService {
-	private static Logger log = Util.getLogger();
-	private CustomerService() {}
+	private static Logger log = Util.getFileLogger();
+	private static Logger out = Util.getConsoleLogger();
+	private CustomerReaderWriter crw;
 	
-	public static Customer getCustomerByUsername(String username) {
-		return Util.catchIOExceptionsReturnType(() -> CustomerReaderWriter.getCustomerByUsername(username));
+	public CustomerService(CustomerReaderWriter crw) {
+		this.crw = crw;
 	}
 	
-	public static void saveCustomer(Customer cust) {
-		Util.catchIOExceptionsVoid(() -> CustomerReaderWriter.saveCustomer(cust));
+	public Customer getCustomerByUsername(String username) {
+		return Util.catchIOExceptionsReturnType(() -> crw.getCustomerByUsername(username));
+	}
+	
+	public boolean checkIfUsernameExists(String username) {
+		return Util.catchIOExceptionsReturnBool(() -> crw.checkNewUsername(username));
+	}
+	
+	public void saveCustomer(Customer cust) {
+		Util.catchIOExceptionsReturnVoid(() -> crw.saveCustomer(cust));
 	}
 
-	public static void suspendCustomer(Customer cust) {
+	public void suspendCustomer(Customer cust) {
 		cust.setCustStatus(CustomerStatus.SUSPENDED);
-		Util.catchIOExceptionsVoid(() -> CustomerReaderWriter.saveCustomer(cust));
-		System.out.println("Customer suspended");
+		Util.catchIOExceptionsReturnVoid(() -> crw.saveCustomer(cust));
+		out.info("Customer suspended");
 	}
 	
-	public static void reauthorizeCustomer(Customer cust) {
+	public void reauthorizeCustomer(Customer cust) {
 		cust.setCustStatus(CustomerStatus.ACTIVE);
-		Util.catchIOExceptionsVoid(() -> CustomerReaderWriter.saveCustomer(cust));
-		System.out.println("Customer reauthorized");
+		Util.catchIOExceptionsReturnVoid(() -> crw.saveCustomer(cust));
+		out.info("Customer reauthorized");
 	}
 	
-	public static void registerCustomer(Customer cust) {
-		Util.catchIOExceptionsVoid(() -> CustomerReaderWriter.registerNewCustomer(cust));
+	public void registerCustomer(Customer cust) {
+		Util.catchIOExceptionsReturnVoid(() -> crw.registerNewCustomer(cust));
 		log.info("Customer " + cust.getUsername() + " registered");
 	}
 }

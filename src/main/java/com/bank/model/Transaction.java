@@ -106,6 +106,7 @@ public class Transaction implements Serializable {
 		String begin = dateTime.toString()+ " - "+ user 
 				+ initiator.getUsername() 
 				+ action 
+				// TODO: FIX THIS
 				//+ acct.getCurrency().getSymbol() // throws NullPointerException if transaction is a transfer 
 				+ amount;
 		if (type.equals(AccountAction.TRANSFER))

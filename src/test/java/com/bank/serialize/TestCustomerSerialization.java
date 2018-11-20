@@ -1,7 +1,5 @@
 package com.bank.serialize;
 
-import static com.bank.serialize.CustomerReaderWriter.getCustomerByUsername;
-import static com.bank.serialize.CustomerReaderWriter.saveCustomer;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -11,15 +9,21 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.mockito.InjectMocks;
+import org.mockito.MockitoAnnotations;
 
 import com.bank.model.Customer;
 
 public class TestCustomerSerialization {
 	public static Customer c;
+	
+	@InjectMocks
+	CustomerReaderWriter crw;
 
 	@Before
 	public void setUp() throws Exception {
 		c = new Customer();
+		MockitoAnnotations.initMocks(this);
 	}
 
 	@After
@@ -36,17 +40,17 @@ public class TestCustomerSerialization {
 	@Test
 	public void testSaveCustomer() throws IOException {
 		c.setUsername("somecrazyus3rname");
-		saveCustomer(c);
-		Customer newCust = getCustomerByUsername("somecrazyus3rname");
+		crw.saveCustomer(c);
+		Customer newCust = crw.getCustomerByUsername("somecrazyus3rname");
 		assertEquals(c, newCust);
 	}
 	
 	@Test(expected=IllegalArgumentException.class)
 	public void testSaveCustomerNull() throws IOException {
 		c.setUsername("");
-		saveCustomer(c);
+		crw.saveCustomer(c);
 		c.setUsername(null);
-		saveCustomer(c);
+		crw.saveCustomer(c);
 	}
 
 	@Ignore

@@ -14,12 +14,19 @@ import com.bank.services.AccountService;
 import com.bank.services.CustomerService;
 
 public class InputUtil {
-	private InputUtil() {}
-	public static final Scanner sc = Util.getScanner();
-	public static final Logger log = Util.getLogger();
+	private static final Scanner sc = Util.getScanner();
+	private static final Logger log = Util.getFileLogger();
+	private static final Logger out = Util.getConsoleLogger(); 
+	private AccountService actService;
+	private CustomerService custService;
+	
+	public InputUtil(AccountService aService, CustomerService custService) { 
+		this.custService = custService;
+		this.actService = aService; 
+	}
 	
 	public static boolean getYesOrNo(String msg) {
-		System.out.println(msg);
+		out.info(msg);
 		while (true) {
 			String s = sc.nextLine();
 			if (s.equals("y") || s.equals("yes"))
@@ -27,7 +34,7 @@ public class InputUtil {
 			else if (s.equals("n") || s.equals("no"))
 				return false;
 			else
-				System.err.println("Please enter yes or no (y/n)");
+				out.error("Please enter yes or no (y/n)");
 		}
 	}
 	
@@ -36,25 +43,25 @@ public class InputUtil {
 			try {
 				return Integer.parseInt(sc.nextLine());
 			} catch (NumberFormatException e) {
-				System.err.println(MessageHolder.numberFormatException);
+				out.error(MessageHolder.numberFormatException);
 			}
 		}
 	}
 	
-	public static Account getAccountFromUser(String msg) {
-		System.out.println(msg);
+	public Account getAccountFromUser(String msg) {
+		out.info(msg);
 		while (true) {
 			try {
 				int actFromId = Integer.parseInt(sc.nextLine());
-				return AccountService.getAccountById(actFromId);
+				return actService.getAccountById(actFromId);
 			} catch (NumberFormatException nfe) {
-				System.err.println(MessageHolder.numberFormatException);
+				out.error(MessageHolder.numberFormatException);
 			}
 		}
 	}
 	
 	public static BigDecimal getAmountFromUser(String msg) {
-		System.out.println(msg);
+		out.info(msg);
 		while (true) {
 			try {
 				BigDecimal amt = new BigDecimal(sc.nextLine());
@@ -65,18 +72,18 @@ public class InputUtil {
 					throw new NumberFormatException();
 			} catch (NumberFormatException e) {
 				log.error(MessageHolder.exceptionLogMsg, e);
-				System.err.println(e.getMessage());
+				out.error(e.getMessage());
 			}
 		}
 	}
 	
-	public static Customer getCustomerFromUser(String msg) {
-		System.out.println(msg);
+	public Customer getCustomerFromUser(String msg) {
+		out.info(msg);
 		Customer c = null;
 		while (true) {
 			String custUsername = sc.nextLine();
 			if (custUsername.equals("exit")) break;
-			c = CustomerService.getCustomerByUsername(custUsername);
+			c = custService.getCustomerByUsername(custUsername);
 			if (c != null) break;
 		}
 		return c;
@@ -87,7 +94,7 @@ public class InputUtil {
 			try {
 				return LocalDate.parse(sc.nextLine());
 			} catch (DateTimeParseException e) {
-				System.err.println("Invalid format - try again");
+				out.error("Invalid format - try again");
 			}
 		}
 	}

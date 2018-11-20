@@ -14,16 +14,29 @@ import java.time.LocalDate;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.apache.logging.log4j.Logger;
+
 import com.bank.model.Account;
 import com.bank.model.AccountStatus;
 import com.bank.model.Customer;
+import com.bank.model.MessageHolder;
+import com.bank.util.Util;
 
 public class AccountReaderWriter {
 	public static final String ACCT_DIR = "Accounts/";
 	public static final String FILE_EXT = ".dat";
 	public static final String ACCT_MAX_ID_FILE = "maxaccountid.txt";
 	
-	public static List<Account> getAllAccounts() throws IOException {
+	private static Logger log = Util.getFileLogger();
+	private static Logger out = Util.getConsoleLogger();
+	
+	private CustomerReaderWriter crw;
+	
+	public AccountReaderWriter(CustomerReaderWriter crw) {
+		this.crw = crw;
+	}
+	
+	public List<Account> getAllAccounts() throws IOException {
 		List<Account> allAccounts = new LinkedList<>();
 		File[] files = new File(ACCT_DIR).listFiles();
 		for (File f : files) {
@@ -32,40 +45,41 @@ public class AccountReaderWriter {
 					Account a = (Account) ois.readObject();
 					allAccounts.add(a);
 				} catch (ClassNotFoundException | IOException e) {
-					e.printStackTrace();
+					log.error(MessageHolder.exceptionLogMsg, e);
 				}
 			}
 		}
 		return allAccounts;
 	}
 	
-	public static List<Account> getAllAccountsByStatus(AccountStatus as) throws IOException {
+	public List<Account> getAllAccountsByStatus(AccountStatus as) throws IOException {
 		List<Account> allOfStatus = new LinkedList<>();
 		File[] files = new File(ACCT_DIR).listFiles();
 		for (File f : files) {
 			try(ObjectInputStream ois = new ObjectInputStream(new FileInputStream(f))) {
 				try {
 					Account a = (Account) ois.readObject();
-					if (a.getAcctStatus().equals(as)) allOfStatus.add(a);
+					AccountStatus status = a.getAcctStatus();
+					if (status != null && status.equals(as)) allOfStatus.add(a);
 				} catch (ClassNotFoundException | IOException e) {
-					e.printStackTrace();
+					log.error(MessageHolder.exceptionLogMsg, e);
 				}
 			}
 		}
 		return allOfStatus;
 	}
 	
-	public static Account getAccountById(int id) throws IOException {
+	public Account getAccountById(int id) throws IOException {
 		try(ObjectInputStream ois = new ObjectInputStream(new FileInputStream(ACCT_DIR+id+FILE_EXT))) {
 			return (Account) ois.readObject();
 		} catch (ClassNotFoundException | ClassCastException e) {
-			System.err.println("Something went wrong while reading account from file");
-			e.printStackTrace();
+			out.error("Something went wrong while reading account from file");
+			log.error(MessageHolder.exceptionLogMsg, e);
 			return null;
 		}
 	}
 	
-	public static void registerNewAccount(Customer cust, Account acct) throws IOException {
+	public void registerNewAccount(Customer cust, Account acct) throws IOException {
 		acct.setCreationDate(LocalDate.now());
 		File f = new File(ACCT_MAX_ID_FILE); // file that stores the current max id
 		int currentMax = 0; // will update this later on
@@ -80,23 +94,23 @@ public class AccountReaderWriter {
 		}
 		// in either case, save account and add to customer and write the new max to the file
 		saveAccount(acct);
-		System.out.println("Success! Your new account"+acct.getName()+" was created");
+		out.info("Success! Your new account"+acct.getName()+" was created");
 		cust.addNewAccount(acct.getId());
-		CustomerReaderWriter.saveCustomer(cust);
+		crw.saveCustomer(cust);
 		try (BufferedWriter bw = new BufferedWriter(new FileWriter(f))) {
 			bw.write(String.valueOf(acct.getId())); // must write as String
-			System.out.println(f.getName()+" successfully updated");
+			out.info(f.getName()+" successfully updated");
 		}
 	}
 	
-	public static void saveAccount(Account acct) throws IOException {
+	public void saveAccount(Account acct) throws IOException {
 		File custFile = new File(ACCT_DIR+acct.getId()+FILE_EXT);
 		if (!custFile.getParentFile().exists()) { // create 'Accounts' directory if it doesn't exist
 			boolean success = custFile.getParentFile().mkdirs();
-			if (success) System.out.println("Created 'Accounts' folder");
-			else System.err.println("Unable to create 'Accounts' folder");
+			if (success) out.info("Created 'Accounts' folder");
+			else out.error("Unable to create 'Accounts' folder");
 		}
-		custFile.createNewFile(); // create the file if it doesn't already exist
+		if (custFile.createNewFile()) log.info("Created new file "+custFile.getAbsolutePath()); // create the file if it doesn't already exist
 		try(ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(custFile))) {
 			oos.writeObject(acct);			
 		}
